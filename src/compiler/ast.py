@@ -18,3 +18,10 @@ class BinaryOp(Expression):
     left: Expression
     op: str
     right: Expression
+
+@dataclass
+class ConditionExpr(Expression):
+    """AST node for if-then-else expression"""
+    condition: Expression
+    then_branch: Expression
+    else_branch: Expression | None  #optional

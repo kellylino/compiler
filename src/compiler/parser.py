@@ -26,8 +26,9 @@ def parse(tokens: list[Token]) -> ast.Expression:
     # it checks that the token being consumed has that text.
     # If 'expected' is a list, then the token must have one of the texts in the list.
     def consume(expected: str | list[str] | None = None) -> Token:
-        nonlocal pos # Python's "nonlocal" lets us modify `pos`
-                     # without creating a local variable of the same name.
+        # Python's "nonlocal" lets us modify `pos` without creating a local variable of the same name.
+        nonlocal pos
+
         token = peek()
         if isinstance(expected, str) and token.text != expected:
             raise Exception(f'{token.loc}: expected "{expected}"')
@@ -72,7 +73,10 @@ def parse(tokens: list[Token]) -> ast.Expression:
         while peek().text in ['*', '/']:
             operator_token = consume()
             operator = operator_token.text
-            right = parse_factor()
+            if peek().text == 'if':
+                right = parse_if_expression()
+            else:
+                right = parse_factor()
             left = ast.BinaryOp(
                 left,
                 operator,
@@ -120,14 +124,37 @@ def parse(tokens: list[Token]) -> ast.Expression:
 
         return left
 
+    def parse_if_expression() -> ast.Expression:
+        consume('if')
+        condition = parse_expression()
+        consume('then')
+        then_branch = parse_expression()
+
+        else_branch = None
+        if peek().text == 'else':
+            consume('else')
+            else_branch = parse_expression()
+
+        return ast.ConditionExpr(
+            condition,
+            then_branch,
+            else_branch
+        )
+
     def parse_expression() -> ast.Expression:
+
+        if peek().text == 'if':
+            return parse_if_expression()
 
         left = parse_term()
 
         while peek().text in ['+', '-']:
             operator_token = consume()
             operator = operator_token.text
-            right = parse_term()
+            if peek().text == 'if':
+                right = parse_if_expression()
+            else:
+                right = parse_term()
             left = ast.BinaryOp(
                 left,
                 operator,

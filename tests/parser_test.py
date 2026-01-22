@@ -51,6 +51,155 @@ def test_parser_parentheses() -> None:
         right=ast.Identifier('c')
     )
 
+def test_single_if_expression() -> None:
+
+    result = parse(tokenize('if a then b + c'))
+    assert result == ast.ConditionExpr(
+        condition=ast.Identifier('a'),
+        then_branch=ast.BinaryOp(
+            left=ast.Identifier('b'),
+            op='+',
+            right=ast.Identifier('c')
+        ),
+        else_branch=None
+    )
+
+def test_single_if_else_expression() -> None:
+
+    result = parse(tokenize('if a then b + c else x * y'))
+    assert result == ast.ConditionExpr(
+        condition=ast.Identifier('a'),
+        then_branch=ast.BinaryOp(
+            left=ast.Identifier('b'),
+            op='+',
+            right=ast.Identifier('c')
+        ),
+        else_branch=ast.BinaryOp(
+            left=ast.Identifier('x'),
+            op='*',
+            right=ast.Identifier('y')
+        )
+    )
+
+def test_single_if_else_and_other_expression() -> None:
+
+    result_1 = parse(tokenize('1 + if true then 2 else 3'))
+    assert result_1 == ast.BinaryOp(
+        left=ast.Literal(1),
+        op='+',
+        right=ast.ConditionExpr(
+            condition=ast.Identifier('true'),
+            then_branch=ast.Literal(2),
+            else_branch=ast.Literal(3)
+        )
+    )
+
+    result_2 = parse(tokenize('a + b * c + if true then 2 else 3'))
+    assert result_2 == ast.BinaryOp(
+        left=ast.BinaryOp(
+            left=ast.Identifier('a'),
+            op='+',
+            right=ast.BinaryOp(
+                left=ast.Identifier('b'),
+                op='*',
+                right=ast.Identifier('c')
+            )
+        ),
+        op='+',
+        right=ast.ConditionExpr(
+            condition=ast.Identifier('true'),
+            then_branch=ast.Literal(2),
+            else_branch=ast.Literal(3)
+        )
+    )
+
+    result_3 = parse(tokenize('a + b * if true then 2 else 3'))
+    assert result_3 == ast.BinaryOp(
+        left=ast.Identifier('a'),
+        op='+',
+        right=ast.BinaryOp(
+            left=ast.Identifier('b'),
+            op='*',
+            right=ast.ConditionExpr(
+                condition=ast.Identifier('true'),
+                then_branch=ast.Literal(2),
+                else_branch=ast.Literal(3)
+            )
+        )
+    )
+
+def test_nested_if_else_expression() -> None:
+
+    result = parse(tokenize('if a then b else if c then d else e'))
+    assert result == ast.ConditionExpr(
+        condition=ast.Identifier('a'),
+        then_branch=ast.Identifier('b'),
+        else_branch=ast.ConditionExpr(
+            condition=ast.Identifier('c'),
+            then_branch=ast.Identifier('d'),
+            else_branch=ast.Identifier('e')
+        )
+    )
+
+def test_nested_if_else_and_other_expression() -> None:
+
+    result_1 = parse(tokenize('1 + if true then 2 else if c then d else e'))
+    assert result_1 == ast.BinaryOp(
+        left=ast.Literal(1),
+        op='+',
+        right=ast.ConditionExpr(
+            condition=ast.Identifier('true'),
+            then_branch=ast.Literal(2),
+            else_branch=ast.ConditionExpr(
+                condition=ast.Identifier('c'),
+                then_branch=ast.Identifier('d'),
+                else_branch=ast.Identifier('e')
+            )
+        )
+    )
+
+    result_2 = parse(tokenize('a + b * c + if true then 2 else if 1 then d else e'))
+    assert result_2 == ast.BinaryOp(
+        left=ast.BinaryOp(
+            left=ast.Identifier('a'),
+            op='+',
+            right=ast.BinaryOp(
+                left=ast.Identifier('b'),
+                op='*',
+                right=ast.Identifier('c')
+            )
+        ),
+        op='+',
+        right=ast.ConditionExpr(
+            condition=ast.Identifier('true'),
+            then_branch=ast.Literal(2),
+            else_branch=ast.ConditionExpr(
+                condition=ast.Literal(1),
+                then_branch=ast.Identifier('d'),
+                else_branch=ast.Identifier('e')
+            )
+        )
+    )
+
+    result_3 = parse(tokenize('a + if b then c else d * if e then f else g'))
+    assert result_3 == ast.BinaryOp(
+        left=ast.Identifier('a'),
+        op='+',
+        right=ast.ConditionExpr(
+            condition=ast.Identifier('b'),
+            then_branch=ast.Identifier('c'),
+            else_branch=ast.BinaryOp(
+                left=ast.Identifier('d'),
+                op='*',
+                right=ast.ConditionExpr(
+                    condition=ast.Identifier('e'),
+                    then_branch=ast.Identifier('f'),
+                    else_branch=ast.Identifier('g')
+                )
+            )
+        )
+    )
+
 def test_garbage_at_end() -> None:
 
     with pytest.raises(Exception, match="unexpected token"):

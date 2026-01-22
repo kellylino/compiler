@@ -25,3 +25,9 @@ class ConditionExpr(Expression):
     condition: Expression
     then_branch: Expression
     else_branch: Expression | None  #optional
+
+@dataclass
+class FunctionExpr(Expression):
+    """AST node for function calls like f(x, y + z)"""
+    function_name: Identifier
+    arguments: list[Expression]

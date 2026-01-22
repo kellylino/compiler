@@ -63,7 +63,12 @@ def parse(tokens: list[Token]) -> ast.Expression:
         elif peek().type == 'int_literal':
             return parse_int_literal()
         elif peek().type == 'identifier':
-            return parse_identifier()
+            identifier = parse_identifier()
+
+            if peek().text == '(':
+                return parse_function(identifier)
+            else:
+                return identifier
         else:
             raise Exception(f'{peek().loc}: expected "(", an integer literal or an identifier')
 
@@ -140,6 +145,23 @@ def parse(tokens: list[Token]) -> ast.Expression:
             then_branch,
             else_branch
         )
+
+    def parse_function(function_name: ast.Identifier) -> ast.Expression:
+        consume('(')
+
+        arguments = []
+        if peek().text != ')':
+            while True:
+                arg = parse_expression()
+                arguments.append(arg)
+
+                if peek().text == ',':
+                    consume(',')
+                else:
+                    break
+
+        consume(')')
+        return ast.FunctionExpr(function_name, arguments)
 
     def parse_expression() -> ast.Expression:
 

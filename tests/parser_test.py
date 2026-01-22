@@ -3,6 +3,7 @@ from compiler.parser import parse
 import compiler.ast as ast
 import pytest
 
+# Task 1
 def test_parser_basics() -> None:
 
     result = parse(tokenize('a + b'))
@@ -51,6 +52,22 @@ def test_parser_parentheses() -> None:
         right=ast.Identifier('c')
     )
 
+def test_garbage_at_end() -> None:
+
+    with pytest.raises(Exception, match="unexpected token"):
+        parse(tokenize('a + b c'))
+
+    with pytest.raises(Exception, match="unexpected token"):
+        parse(tokenize('1 2'))
+
+    with pytest.raises(Exception, match="unexpected token"):
+        parse(tokenize('(a + b) x'))
+
+def test_empty_input() -> None:
+    with pytest.raises(Exception, match="Empty input"):
+        parse([])
+
+# Task 2
 def test_single_if_expression() -> None:
 
     result = parse(tokenize('if a then b + c'))
@@ -200,17 +217,56 @@ def test_nested_if_else_and_other_expression() -> None:
         )
     )
 
-def test_garbage_at_end() -> None:
+# Task 3
+def test_parser_function() -> None:
 
-    with pytest.raises(Exception, match="unexpected token"):
-        parse(tokenize('a + b c'))
+    result = parse(tokenize('f(x, y + z)'))
+    assert result == ast.FunctionExpr(
+        function_name=ast.Identifier('f'),
+        arguments= [
+            ast.Identifier('x'),
+            ast.BinaryOp(
+                left=ast.Identifier('y'),
+                op='+',
+                right=ast.Identifier('z')
+            )
+        ]
+    )
 
-    with pytest.raises(Exception, match="unexpected token"):
-        parse(tokenize('1 2'))
+def test_nested_parser_function() -> None:
 
-    with pytest.raises(Exception, match="unexpected token"):
-        parse(tokenize('(a + b) x'))
+    result = parse(tokenize('f(f(a))'))
+    assert result == ast.FunctionExpr(
+        function_name=ast.Identifier('f'),
+        arguments=[
+            ast.FunctionExpr(
+                function_name=ast.Identifier('f'),
+                arguments=[
+                    ast.Identifier('a')
+                ]
+            )
+        ]
+    )
 
-def test_empty_input() -> None:
-    with pytest.raises(Exception, match="Empty input"):
-        parse([])
+def test_nested_parser_function_and_other() -> None:
+
+    result = parse(tokenize('f(a * f(b)) + c'))
+    assert result == ast.BinaryOp(
+        left=ast.FunctionExpr(
+            function_name=ast.Identifier('f'),
+            arguments=[
+                ast.BinaryOp(
+                    left=ast.Identifier('a'),
+                    op='*',
+                    right=ast.FunctionExpr(
+                        function_name=ast.Identifier('f'),
+                        arguments=[
+                            ast.Identifier('b'),
+                        ]
+                    )
+                )
+            ]
+        ),
+        op='+',
+        right=ast.Identifier('c')
+    )

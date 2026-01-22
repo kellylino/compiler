@@ -2,7 +2,7 @@ import re
 from typing import Literal, Union
 from dataclasses import dataclass
 
-TokenType = Literal['int_literal', 'identifier', 'operators', 'punctuation', 'other']
+TokenType = Literal['int_literal', 'identifier', 'operators', 'punctuation', 'other', 'end']
 
 class SpecialLocation:
     def __eq__(self, other: object) -> bool:
@@ -18,7 +18,7 @@ class Location:
 @dataclass
 class Token:
     text: str
-    type: Literal['int_literal', 'identifier', 'operators', 'punctuation', 'other']
+    type: Literal['int_literal', 'identifier', 'operators', 'punctuation', 'other', 'end']
     loc: Union[Location, SpecialLocation]
 
     def __eq__(self, other: object) -> bool:

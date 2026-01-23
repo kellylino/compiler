@@ -270,3 +270,190 @@ def test_nested_parser_function_and_other() -> None:
         op='+',
         right=ast.Identifier('c')
     )
+
+# Task 4
+def test_right_parse_expression() -> None:
+
+    result = parse(tokenize('a = b = c'))
+    assert result == ast.BinaryOp(
+        left=ast.Identifier('a'),
+        op='=',
+        right=ast.BinaryOp(
+            left=ast.Identifier('b'),
+            op='=',
+            right=ast.Identifier('c')
+        )
+    )
+
+def test_left_associative_binary_operators() -> None:
+    result_1 = parse(tokenize('a = b or c and d'))
+    assert result_1 == ast.BinaryOp(
+        left=ast.Identifier('a'),
+        op='=',
+        right=ast.BinaryOp(
+            left=ast.Identifier('b'),
+            op='or',
+            right=ast.BinaryOp(
+                left=ast.Identifier('c'),
+                op='and',
+                right=ast.Identifier('d')
+            )
+        )
+    )
+
+    result_2 = parse(tokenize('a and b == c'))
+    assert result_2 == ast.BinaryOp(
+        left=ast.Identifier('a'),
+        op='and',
+        right=ast.BinaryOp(
+            left=ast.Identifier('b'),
+            op='==',
+            right=ast.Identifier('c')
+        )
+    )
+
+    result_3 = parse(tokenize('a = b or c * 3 + 7 and d'))
+    assert result_3 == ast.BinaryOp(
+        left=ast.Identifier('a'),
+        op='=',
+        right=ast.BinaryOp(
+            left=ast.Identifier('b'),
+            op='or',
+            right=ast.BinaryOp(
+                left=ast.BinaryOp(
+                    left=ast.BinaryOp(
+                        left=ast.Identifier('c'),
+                        op='*',
+                        right=ast.Literal(3)
+                    ),
+                    op='+',
+                    right=ast.Literal(7)
+                ),
+                op='and',
+                right=ast.Identifier('d')
+            )
+        )
+    )
+
+def test_unary_expression() -> None:
+    result = parse(tokenize('not not x'))
+    assert result == ast.UnaryOp(
+        op='not',
+        operand=ast.UnaryOp(
+            op='not',
+            operand=ast.Identifier('x')
+        )
+    )
+
+    result_2 = parse(tokenize('not not x + 3'))
+    assert result_2 == ast.BinaryOp(
+        left=ast.UnaryOp(
+            op='not',
+            operand=ast.UnaryOp(
+                op='not',
+                operand=ast.Identifier('x')
+            )
+        ),
+        op='+',
+        right=ast.Literal(3)
+    )
+
+    result_3 = parse(tokenize('a = b or c * 3 > not -a + 3'))
+    assert result_3 == ast.BinaryOp(
+        left=ast.Identifier('a'),
+        op='=',
+        right=ast.BinaryOp(
+            left=ast.Identifier('b'),
+            op='or',
+            right=ast.BinaryOp(
+                left=ast.BinaryOp(
+                    left=ast.Identifier('c'),
+                    op='*',
+                    right=ast.Literal(3)
+                ),
+                op='>',
+                right=ast.BinaryOp(
+                    left=ast.UnaryOp(
+                    op='not',
+                    operand=ast.UnaryOp(
+                        op='-',
+                        operand=ast.Identifier('a')
+                        )
+                    ),
+                op='+',
+                right=ast.Literal(3)
+                )
+            )
+        )
+    )
+
+    result_4 = parse(tokenize('-x'))
+    assert result_4 == ast.UnaryOp(
+        op='-',
+        operand=ast.Identifier('x')
+    )
+
+def test_all_operator_precedence() -> None:
+
+    result = parse(tokenize('not -a * b % 3 + c / 2 >= d - 1 == e != f and g < h or i'))
+    assert result == ast.BinaryOp(
+        left=ast.BinaryOp(
+            left=ast.BinaryOp(
+                left=ast.BinaryOp(
+                    left=ast.BinaryOp(
+                        left=ast.BinaryOp(
+                            left=ast.BinaryOp(
+                                left=ast.BinaryOp(
+                                    left=ast.UnaryOp(
+                                        op='not',
+                                        operand=ast.UnaryOp(
+                                            op='-',
+                                            operand=ast.Identifier('a')
+                                        )
+                                    ),
+                                    op='*',
+                                    right=ast.Identifier('b')
+                                ),
+                                op='%',
+                                right=ast.Literal(3)
+                            ),
+                            op='+',
+                            right=ast.BinaryOp(
+                                left=ast.Identifier('c'),
+                                op='/',
+                                right=ast.Literal(2)
+                            )
+                        ),
+                        op='>=',
+                        right=ast.BinaryOp(
+                            left=ast.Identifier('d'),
+                            op='-',
+                            right=ast.Literal(1)
+                        )
+                    ),
+                    op='==',
+                    right=ast.Identifier('e')
+                ),
+                op='!=',
+                right=ast.Identifier('f')
+                ),
+            op='and',
+            right=ast.BinaryOp(
+                left=ast.Identifier('g'),
+                op='<',
+                right=ast.Identifier('h')
+            )
+        ),
+        op='or',
+        right=ast.Identifier('i')
+    )
+
+# Task 5
+
+# Task 6
+
+# Task 7
+
+# Task 8
+
+# Task 9

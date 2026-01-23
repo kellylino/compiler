@@ -29,5 +29,11 @@ class ConditionExpr(Expression):
 @dataclass
 class FunctionExpr(Expression):
     """AST node for function calls like f(x, y + z)"""
-    function_name: Identifier
+    function_name: Expression
     arguments: list[Expression]
+
+@dataclass
+class UnaryOp(Expression):
+    """AST node for a unary operation like `not x`"""
+    op: str
+    operand: Expression

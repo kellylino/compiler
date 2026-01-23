@@ -86,14 +86,15 @@ def parse(tokens: list[Token]) -> ast.Expression:
 
     def parse_if_expression() -> ast.Expression:
         consume('if')
-        condition = parse_assignment()
+        condition = parse_expression_no_var()
+
         consume('then')
-        then_branch = parse_assignment()
+        then_branch = parse_expression_no_var()
 
         else_branch = None
         if peek().text == 'else':
             consume('else')
-            else_branch = parse_assignment()
+            else_branch = parse_expression_no_var()
 
         return ast.IfExpr(
             condition,
@@ -103,9 +104,9 @@ def parse(tokens: list[Token]) -> ast.Expression:
 
     def parse_while_expression() -> ast.Expression:
         consume('while')
-        condition = parse_assignment()
+        condition = parse_expression_no_var()
         consume('do')
-        body = parse_assignment()
+        body = parse_expression_no_var()
 
         return ast.WhileExpr(
             condition,
@@ -118,7 +119,7 @@ def parse(tokens: list[Token]) -> ast.Expression:
         arguments = []
         if peek().text != ')':
             while True:
-                arg = parse_assignment()
+                arg = parse_expression_no_var()
                 arguments.append(arg)
 
                 if peek().text == ',':
@@ -147,7 +148,16 @@ def parse(tokens: list[Token]) -> ast.Expression:
 
         return ast.BlockExpr(statements)
 
+    def parse_var_expression() -> ast.Expression:
+        consume('var')
+        name = parse_factor()
+        consume('=')
+        initializer = parse_assignment()
 
+        return ast.VarExpr(
+            name,
+            initializer
+        )
 
     def parse_unary_expression() -> ast.Expression:
         op = consume().text
@@ -157,6 +167,13 @@ def parse(tokens: list[Token]) -> ast.Expression:
             operand = parse_factor()
         return ast.UnaryOp(op, operand)
 
+    def parse_expression_no_var() -> ast.Expression:
+        if peek().text == 'var':
+            raise Exception(
+                "unexpected token var, var is only allowed directly inside blocks {} and in top-level expressions"
+            )
+        return parse_assignment()
+
     def make_binary_parser(operators_levels: list[list[str]], level: int) -> Callable:
 
         if level >= len(operators_levels):
@@ -165,8 +182,8 @@ def parse(tokens: list[Token]) -> ast.Expression:
                     return parse_if_expression()
                 elif peek().text == 'while':
                     return parse_while_expression()
-                # elif peek().text == 'var':
-                #     return parse_var_expression()
+                elif peek().text == 'var':
+                    return parse_var_expression()
                 elif peek().text == 'not' or peek().text == '-':
                     return parse_unary_expression()
                 return parse_factor()

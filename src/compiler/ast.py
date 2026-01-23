@@ -49,5 +49,5 @@ class BlockExpr(Expression):
 
 @dataclass
 class VarExpr(Expression):
-    name: str
+    name: Expression
     initializer: Expression

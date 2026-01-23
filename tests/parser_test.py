@@ -587,6 +587,41 @@ def test_complex_block_expression() -> None:
     )
 
 # Task 6
+def test_var_expression() -> None:
+    result = parse(tokenize('var x = 3'))
+    assert result == ast.VarExpr(
+        name=ast.Identifier('x'),
+        initializer=ast.Literal(3)
+    )
+
+    result_2 = parse(tokenize('{var x = 3}'))
+    assert result_2 == ast.BlockExpr(
+       statements=[
+           ast.VarExpr(
+            name=ast.Identifier('x'),
+            initializer=ast.Literal(3)
+           )
+       ]
+    )
+
+def test_var_expression_in_other_lever() -> None:
+    with pytest.raises(Exception, match="unexpected token var"):
+        parse(tokenize('f(var = a)'))
+
+    with pytest.raises(Exception, match="unexpected token var"):
+        parse(tokenize('if 8 then var x = 3'))
+
+    with pytest.raises(Exception, match="unexpected token var"):
+        parse(tokenize('if var x = 3 then a'))
+
+    with pytest.raises(Exception, match="unexpected token var"):
+        parse(tokenize('if b = 6 then a else var c = 8'))
+
+    with pytest.raises(Exception, match="unexpected token var"):
+        parse(tokenize('while var b = 3 do c'))
+
+    with pytest.raises(Exception, match="unexpected token var"):
+        parse(tokenize('while true do var a = 9'))
 
 # Task 7
 

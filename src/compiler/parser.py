@@ -9,7 +9,6 @@ left_associative_binary_operators = [
     ['<', '<=', '>', '>='],
     ['+', '-'],
     ['*', '/', '%'],
-    # ['-', 'not']
 ]
 
 def parse(tokens: list[Token]) -> ast.Expression:
@@ -64,13 +63,15 @@ def parse(tokens: list[Token]) -> ast.Expression:
     def parse_parenthesized() -> ast.Expression:
         consume('(')
         # Recursively call the top level parsing function to parse whatever is inside the parentheses.
-        expr = parse_expression()
+        expr = parse_assignment()
         consume(')')
         return expr
 
     def parse_factor() -> ast.Expression:
         if peek().text == '(':
             return parse_parenthesized()
+        elif peek().text == '{':
+            return parse_block()
         elif peek().type == 'int_literal':
             return parse_int_literal()
         elif peek().type == 'identifier':
@@ -83,72 +84,32 @@ def parse(tokens: list[Token]) -> ast.Expression:
         else:
             raise Exception(f'{peek().loc}: expected "(", an integer literal or an identifier')
 
-    # def parse_term() -> ast.Expression:
-    #     left = parse_factor()
-
-    #     while peek().text in ['*', '/', '%']:
-    #         operator_token = consume()
-    #         operator = operator_token.text
-    #         if peek().text == 'if':
-    #             right = parse_if_expression()
-    #         else:
-    #             right = parse_factor()
-
-    #         left = ast.BinaryOp(
-    #             left,
-    #             operator,
-    #             right
-    #         )
-    #     return left
-
-    # def left_parse_expression() -> ast.Expression:
-    #     left = parse_term()
-
-    #     # While there are more `+` or '-'...
-    #     while peek().text in ['+', '-']:
-    #         # Move past the '+' or '-'.
-    #         operator_token = consume()
-    #         operator = operator_token.text
-
-    #         # Parse the operator on the right.
-    #         right = parse_term()
-
-    #         # Combine it with the stuff we've accumulated on the left so far.
-    #         left = ast.BinaryOp(
-    #             left,
-    #             operator,
-    #             right
-    #         )
-
-    #     return left
-
-    # def right_parse_expression() -> ast.Expression:
-    #     left = parse_term()
-
-    #     operator_token = consume()
-    #     operator = operator_token.text
-    #     if operator == '=':
-    #         right = right_parse_expression()
-    #     else:
-    #         right = parse_term()
-
-    #     return ast.BinaryOp(left, operator, right)
-
     def parse_if_expression() -> ast.Expression:
         consume('if')
-        condition = parse_expression()
+        condition = parse_assignment()
         consume('then')
-        then_branch = parse_expression()
+        then_branch = parse_assignment()
 
         else_branch = None
         if peek().text == 'else':
             consume('else')
-            else_branch = parse_expression()
+            else_branch = parse_assignment()
 
-        return ast.ConditionExpr(
+        return ast.IfExpr(
             condition,
             then_branch,
             else_branch
+        )
+
+    def parse_while_expression() -> ast.Expression:
+        consume('while')
+        condition = parse_assignment()
+        consume('do')
+        body = parse_assignment()
+
+        return ast.WhileExpr(
+            condition,
+            body
         )
 
     def parse_function(function_name: ast.Identifier) -> ast.Expression:
@@ -157,7 +118,7 @@ def parse(tokens: list[Token]) -> ast.Expression:
         arguments = []
         if peek().text != ')':
             while True:
-                arg = parse_expression()
+                arg = parse_assignment()
                 arguments.append(arg)
 
                 if peek().text == ',':
@@ -167,6 +128,26 @@ def parse(tokens: list[Token]) -> ast.Expression:
 
         consume(')')
         return ast.FunctionExpr(function_name, arguments)
+
+    def parse_block() -> ast.Expression:
+        consume('{')
+
+        statements = []
+        while peek().text != '}':
+            arg = parse_assignment()
+            statements.append(arg)
+
+            if peek().text == ';':
+                consume(';')
+
+        consume('}')
+
+        # if peek().text == ';':
+        #     consume(';')
+
+        return ast.BlockExpr(statements)
+
+
 
     def parse_unary_expression() -> ast.Expression:
         op = consume().text
@@ -182,7 +163,11 @@ def parse(tokens: list[Token]) -> ast.Expression:
             def parse_base() -> ast.Expression:
                 if peek().text == 'if':
                     return parse_if_expression()
-                if peek().text == 'not' or peek().text == '-':
+                elif peek().text == 'while':
+                    return parse_while_expression()
+                # elif peek().text == 'var':
+                #     return parse_var_expression()
+                elif peek().text == 'not' or peek().text == '-':
                     return parse_unary_expression()
                 return parse_factor()
             return parse_base
@@ -212,34 +197,6 @@ def parse(tokens: list[Token]) -> ast.Expression:
         return left
 
     result = parse_assignment()
-
-    # def parse_expression() -> ast.Expression:
-    #     if peek().text == 'if':
-    #         return parse_if_expression()
-
-    #     left = parse_term()
-
-    #     if peek().text == '=':
-    #         consume('=')
-    #         right = parse_expression()
-    #         return ast.BinaryOp(left, '=', right)
-
-    #     while peek().text in left_associative_binary_operators:
-    #         operator_token = consume()
-    #         operator = operator_token.text
-    #         if peek().text == 'if':
-    #             right = parse_if_expression()
-    #         else:
-    #             right = parse_term()
-    #         left = ast.BinaryOp(
-    #             left,
-    #             operator,
-    #             right
-    #         )
-
-    #     return left
-
-    # result = parse_expression()
 
     if peek().type != 'end':
         raise Exception(f'{peek().loc}: unexpected token "{peek().text}" after complete expression')

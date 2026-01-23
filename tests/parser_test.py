@@ -71,7 +71,7 @@ def test_empty_input() -> None:
 def test_single_if_expression() -> None:
 
     result = parse(tokenize('if a then b + c'))
-    assert result == ast.ConditionExpr(
+    assert result == ast.IfExpr(
         condition=ast.Identifier('a'),
         then_branch=ast.BinaryOp(
             left=ast.Identifier('b'),
@@ -84,7 +84,7 @@ def test_single_if_expression() -> None:
 def test_single_if_else_expression() -> None:
 
     result = parse(tokenize('if a then b + c else x * y'))
-    assert result == ast.ConditionExpr(
+    assert result == ast.IfExpr(
         condition=ast.Identifier('a'),
         then_branch=ast.BinaryOp(
             left=ast.Identifier('b'),
@@ -104,7 +104,7 @@ def test_single_if_else_and_other_expression() -> None:
     assert result_1 == ast.BinaryOp(
         left=ast.Literal(1),
         op='+',
-        right=ast.ConditionExpr(
+        right=ast.IfExpr(
             condition=ast.Identifier('true'),
             then_branch=ast.Literal(2),
             else_branch=ast.Literal(3)
@@ -123,7 +123,7 @@ def test_single_if_else_and_other_expression() -> None:
             )
         ),
         op='+',
-        right=ast.ConditionExpr(
+        right=ast.IfExpr(
             condition=ast.Identifier('true'),
             then_branch=ast.Literal(2),
             else_branch=ast.Literal(3)
@@ -137,7 +137,7 @@ def test_single_if_else_and_other_expression() -> None:
         right=ast.BinaryOp(
             left=ast.Identifier('b'),
             op='*',
-            right=ast.ConditionExpr(
+            right=ast.IfExpr(
                 condition=ast.Identifier('true'),
                 then_branch=ast.Literal(2),
                 else_branch=ast.Literal(3)
@@ -148,10 +148,10 @@ def test_single_if_else_and_other_expression() -> None:
 def test_nested_if_else_expression() -> None:
 
     result = parse(tokenize('if a then b else if c then d else e'))
-    assert result == ast.ConditionExpr(
+    assert result == ast.IfExpr(
         condition=ast.Identifier('a'),
         then_branch=ast.Identifier('b'),
-        else_branch=ast.ConditionExpr(
+        else_branch=ast.IfExpr(
             condition=ast.Identifier('c'),
             then_branch=ast.Identifier('d'),
             else_branch=ast.Identifier('e')
@@ -164,10 +164,10 @@ def test_nested_if_else_and_other_expression() -> None:
     assert result_1 == ast.BinaryOp(
         left=ast.Literal(1),
         op='+',
-        right=ast.ConditionExpr(
+        right=ast.IfExpr(
             condition=ast.Identifier('true'),
             then_branch=ast.Literal(2),
-            else_branch=ast.ConditionExpr(
+            else_branch=ast.IfExpr(
                 condition=ast.Identifier('c'),
                 then_branch=ast.Identifier('d'),
                 else_branch=ast.Identifier('e')
@@ -187,10 +187,10 @@ def test_nested_if_else_and_other_expression() -> None:
             )
         ),
         op='+',
-        right=ast.ConditionExpr(
+        right=ast.IfExpr(
             condition=ast.Identifier('true'),
             then_branch=ast.Literal(2),
-            else_branch=ast.ConditionExpr(
+            else_branch=ast.IfExpr(
                 condition=ast.Literal(1),
                 then_branch=ast.Identifier('d'),
                 else_branch=ast.Identifier('e')
@@ -202,13 +202,13 @@ def test_nested_if_else_and_other_expression() -> None:
     assert result_3 == ast.BinaryOp(
         left=ast.Identifier('a'),
         op='+',
-        right=ast.ConditionExpr(
+        right=ast.IfExpr(
             condition=ast.Identifier('b'),
             then_branch=ast.Identifier('c'),
             else_branch=ast.BinaryOp(
                 left=ast.Identifier('d'),
                 op='*',
-                right=ast.ConditionExpr(
+                right=ast.IfExpr(
                     condition=ast.Identifier('e'),
                     then_branch=ast.Identifier('f'),
                     else_branch=ast.Identifier('g')
@@ -449,6 +449,142 @@ def test_all_operator_precedence() -> None:
     )
 
 # Task 5
+def test_block_expression() -> None:
+    result = parse(tokenize('{f(a); x = y; f(x)}'))
+    assert result == ast.BlockExpr(
+        statements=[
+            ast.FunctionExpr(
+                function_name=ast.Identifier('f'),
+                arguments=[
+                    ast.Identifier('a')
+                ]
+            ),
+            ast.BinaryOp(
+                left=ast.Identifier('x'),
+                op='=',
+                right=ast.Identifier('y')
+            ),
+            ast.FunctionExpr(
+                function_name=ast.Identifier('f'),
+                arguments=[
+                    ast.Identifier('x')
+                ]
+            )
+        ]
+    )
+
+def test_block_value() -> None:
+    result = parse(tokenize('x = { f(a); b }'))
+    assert result == ast.BinaryOp(
+        left=ast.Identifier('x'),
+        op='=',
+        right=ast.BlockExpr(
+            statements=[
+                ast.FunctionExpr(
+                    function_name=ast.Identifier('f'),
+                    arguments=[
+                        ast.Identifier('a')
+                    ]
+                ),
+                ast.Identifier('b')
+            ]
+        )
+    )
+
+def test_while_expression() -> None:
+    result = parse(tokenize('while a + b = c do 1'))
+    assert result == ast.WhileExpr(
+        condition=ast.BinaryOp(
+            left=ast.BinaryOp(
+                left=ast.Identifier('a'),
+                op='+',
+                right=ast.Identifier('b')
+            ),
+            op='=',
+            right=ast.Identifier('c')
+        ),
+        body=ast.Literal(1)
+    )
+
+def test_complex_block_expression() -> None:
+
+    result = parse(tokenize("""
+    {
+        while f() do {
+            x = 10;
+            y = if g(x) then {
+                x = x + 1;
+                x
+            } else {
+                g(x)
+            };
+            g(y);
+        };
+        123
+    }
+    """))
+    assert result == ast.BlockExpr(
+        statements=[
+            ast.WhileExpr(
+                condition=ast.FunctionExpr(
+                    function_name=ast.Identifier('f'),
+                    arguments=[]
+                ),
+                body=ast.BlockExpr(
+                    statements=[
+                        ast.BinaryOp(
+                            left=ast.Identifier('x'),
+                            op='=',
+                            right=ast.Literal(10)
+                        ),
+                        ast.BinaryOp(
+                            left=ast.Identifier('y'),
+                            op='=',
+                            right=ast.IfExpr(
+                                condition=ast.FunctionExpr(
+                                    function_name=ast.Identifier('g'),
+                                    arguments=[
+                                        ast.Identifier('x')
+                                    ]
+                                ),
+                                then_branch=ast.BlockExpr(
+                                    statements=[
+                                        ast.BinaryOp(
+                                            left=ast.Identifier('x'),
+                                            op='=',
+                                            right=ast.BinaryOp(
+                                                left=ast.Identifier('x'),
+                                                op='+',
+                                                right=ast.Literal(1)
+                                            )
+                                        ),
+                                        ast.Identifier('x')
+                                    ]
+                                ),
+                                else_branch=ast.BlockExpr(
+                                    statements=[
+                                        ast.FunctionExpr(
+                                            function_name=ast.Identifier('g'),
+                                            arguments=[
+                                                ast.Identifier('x')
+                                            ]
+                                        )
+                                    ]
+                                )
+                            )
+                        ),
+                        ast.FunctionExpr(
+                            function_name=ast.Identifier('g'),
+                            arguments=[
+                                ast.Identifier('y')
+                            ]
+                        )
+                    ]
+                )
+            ),
+            ast.Literal(123)
+        ]
+    )
 
 # Task 6
 

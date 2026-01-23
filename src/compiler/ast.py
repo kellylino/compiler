@@ -20,11 +20,16 @@ class BinaryOp(Expression):
     right: Expression
 
 @dataclass
-class ConditionExpr(Expression):
+class IfExpr(Expression):
     """AST node for if-then-else expression"""
     condition: Expression
     then_branch: Expression
     else_branch: Expression | None  #optional
+
+@dataclass
+class WhileExpr(Expression):
+    condition: Expression
+    body: Expression
 
 @dataclass
 class FunctionExpr(Expression):
@@ -37,3 +42,12 @@ class UnaryOp(Expression):
     """AST node for a unary operation like `not x`"""
     op: str
     operand: Expression
+
+@dataclass
+class BlockExpr(Expression):
+    statements: list[Expression]
+
+@dataclass
+class VarExpr(Expression):
+    name: str
+    initializer: Expression

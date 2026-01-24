@@ -136,15 +136,17 @@ def parse(tokens: list[Token]) -> ast.Expression:
         statements = []
         while peek().text != '}':
             arg = parse_assignment()
+            if isinstance(arg, (ast.Identifier, ast.Literal)):
+                if peek().text != '}' and peek().text != ';':
+                    raise Exception(
+                        'expected token "}" or ";"'
+                    )
             statements.append(arg)
 
             if peek().text == ';':
                 consume(';')
 
         consume('}')
-
-        # if peek().text == ';':
-        #     consume(';')
 
         return ast.BlockExpr(statements)
 

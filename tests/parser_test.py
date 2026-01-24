@@ -63,6 +63,9 @@ def test_garbage_at_end() -> None:
     with pytest.raises(Exception, match="unexpected token"):
         parse(tokenize('(a + b) x'))
 
+    with pytest.raises(Exception, match="unexpected token"):
+        parse(tokenize('a b'))
+
 def test_empty_input() -> None:
     with pytest.raises(Exception, match="Empty input"):
         parse([])
@@ -517,9 +520,9 @@ def test_complex_block_expression() -> None:
                 x
             } else {
                 g(x)
-            };
+            }
             g(y);
-        };
+        }
         123
     }
     """))
@@ -604,6 +607,28 @@ def test_var_expression() -> None:
        ]
     )
 
+    result_3 = parse(tokenize('{f(a); var x = 8; f(x)}'))
+    assert result_3 == ast.BlockExpr(
+        statements=[
+            ast.FunctionExpr(
+                function_name=ast.Identifier('f'),
+                arguments=[
+                    ast.Identifier('a')
+                ]
+            ),
+            ast.VarExpr(
+                name=ast.Identifier('x'),
+                initializer=ast.Literal(8)
+            ),
+            ast.FunctionExpr(
+                function_name=ast.Identifier('f'),
+                arguments=[
+                    ast.Identifier('x')
+                ]
+            )
+        ]
+    )
+
 def test_var_expression_in_other_lever() -> None:
     with pytest.raises(Exception, match="unexpected token var"):
         parse(tokenize('f(var = a)'))
@@ -624,6 +649,125 @@ def test_var_expression_in_other_lever() -> None:
         parse(tokenize('while true do var a = 9'))
 
 # Task 7
+def test_more_block_expression() -> None:
+
+    result = parse(tokenize('{ { a } { b } }'))
+    assert result == ast.BlockExpr(
+        statements=[
+            ast.BlockExpr(
+                statements=[
+                    ast.Identifier('a')
+                ]
+            ),
+            ast.BlockExpr(
+                statements=[
+                    ast.Identifier('b')
+                ]
+            )
+        ]
+    )
+
+    with pytest.raises(Exception, match= 'expected token "}" or ";"'):
+        parse(tokenize('{ a b }'))
+
+    result = parse(tokenize('{ if true then { a } b }'))
+    assert result == ast.BlockExpr(
+        statements=[
+            ast.IfExpr(
+                condition=ast.Identifier('true'),
+                then_branch=ast.BlockExpr(
+                    statements=[
+                        ast.Identifier('a')
+                    ]
+                ),
+                else_branch=None
+            ),
+            ast.Identifier('b')
+        ]
+    )
+
+    result = parse(tokenize('{ if true then { a }; b }'))
+    assert result == ast.BlockExpr(
+        statements=[
+            ast.IfExpr(
+                condition=ast.Identifier('true'),
+                then_branch=ast.BlockExpr(
+                    statements=[
+                        ast.Identifier('a')
+                    ]
+                ),
+                else_branch=None
+            ),
+            ast.Identifier('b')
+        ]
+    )
+
+    with pytest.raises(Exception, match= 'expected token "}" or ";"'):
+        parse(tokenize('{ if true then { a } b c }'))
+
+    result = parse(tokenize('{ if true then { a }; b; c }'))
+    assert result == ast.BlockExpr(
+        statements=[
+            ast.IfExpr(
+                condition=ast.Identifier('true'),
+                then_branch=ast.BlockExpr(
+                    statements=[
+                        ast.Identifier('a')
+                    ]
+                ),
+                else_branch=None
+            ),
+            ast.Identifier('b'),
+            ast.Identifier('c')
+        ]
+    )
+
+    result = parse(tokenize('{ if true then { a } else { b } c }'))
+    assert result == ast.BlockExpr(
+        statements=[
+            ast.IfExpr(
+                condition=ast.Identifier('true'),
+                then_branch=ast.BlockExpr(
+                    statements=[
+                        ast.Identifier('a')
+                    ]
+                ),
+                else_branch=ast.BlockExpr(
+                    statements=[
+                        ast.Identifier('b')
+                    ]
+                )
+            ),
+            ast.Identifier('c')
+        ]
+    )
+
+    result = parse(tokenize('x = { { f(a) } { b } }'))
+    assert result == ast.BinaryOp(
+        left=ast.Identifier('x'),
+        op='=',
+        right=ast.BlockExpr(
+            statements=[
+                ast.BlockExpr(
+                    statements=[
+                        ast.FunctionExpr(
+                            function_name=ast.Identifier('f'),
+                            arguments=[
+                                ast.Identifier('a')
+                            ]
+                        )
+                    ]
+                ),
+                ast.BlockExpr(
+                    statements=[
+                        ast.Identifier('b')
+                    ]
+                )
+            ]
+        )
+    )
+
+
 
 # Task 8
 

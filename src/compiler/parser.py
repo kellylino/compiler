@@ -1,4 +1,4 @@
-from compiler.tokenizer import Token
+from compiler.tokenizer import Token, tokenize
 import compiler.ast as ast
 from typing import Callable
 
@@ -52,13 +52,13 @@ def parse(tokens: list[Token]) -> ast.Expression:
         if peek().type != 'int_literal':
             raise Exception(f'{peek().loc}: expected an integer literal')
         token = consume()
-        return ast.Literal(int(token.text))
+        return ast.Literal(token.loc, int(token.text))
 
     def parse_identifier() -> ast.Identifier:
         if peek().type != 'identifier':
             raise Exception(f'{peek().loc}: expected an identifier')
         token = consume()
-        return ast.Identifier(token.text)
+        return ast.Identifier(token.loc, token.text)
 
     def parse_parenthesized() -> ast.Expression:
         consume('(')
@@ -85,7 +85,7 @@ def parse(tokens: list[Token]) -> ast.Expression:
             raise Exception(f'{peek().loc}: expected "(", an integer literal or an identifier')
 
     def parse_if_expression() -> ast.Expression:
-        consume('if')
+        token_if = consume('if')
         condition = parse_expression_no_var()
 
         consume('then')
@@ -97,24 +97,26 @@ def parse(tokens: list[Token]) -> ast.Expression:
             else_branch = parse_expression_no_var()
 
         return ast.IfExpr(
+            token_if.loc,
             condition,
             then_branch,
             else_branch
         )
 
     def parse_while_expression() -> ast.Expression:
-        consume('while')
+        token_while = consume('while')
         condition = parse_expression_no_var()
         consume('do')
         body = parse_expression_no_var()
 
         return ast.WhileExpr(
+            token_while.loc,
             condition,
             body
         )
 
     def parse_function(function_name: ast.Identifier) -> ast.Expression:
-        consume('(')
+        token_func = consume('(')
 
         arguments = []
         if peek().text != ')':
@@ -128,10 +130,10 @@ def parse(tokens: list[Token]) -> ast.Expression:
                     break
 
         consume(')')
-        return ast.FunctionExpr(function_name, arguments)
+        return ast.FunctionExpr(token_func.loc, function_name, arguments)
 
     def parse_block() -> ast.Expression:
-        consume('{')
+        token_block = consume('{')
 
         statements = []
         while peek().text != '}':
@@ -148,26 +150,28 @@ def parse(tokens: list[Token]) -> ast.Expression:
 
         consume('}')
 
-        return ast.BlockExpr(statements)
+        return ast.BlockExpr(token_block.loc, statements)
 
     def parse_var_expression() -> ast.Expression:
-        consume('var')
+        token_var = consume('var')
         name = parse_factor()
         consume('=')
         initializer = parse_assignment()
 
         return ast.VarExpr(
+            token_var.loc,
             name,
             initializer
         )
 
     def parse_unary_expression() -> ast.Expression:
-        op = consume().text
+        token_op = consume()
+        op = token_op.text
         if peek().text == 'not' or peek().text == '-':
             operand = parse_unary_expression()
         else:
             operand = parse_factor()
-        return ast.UnaryOp(op, operand)
+        return ast.UnaryOp(token_op.loc, op, operand)
 
     def parse_expression_no_var() -> ast.Expression:
         if peek().text == 'var':
@@ -198,9 +202,10 @@ def parse(tokens: list[Token]) -> ast.Expression:
         def parse_level() -> ast.Expression:
             left = next_level_parser()
             while peek().text in current_ops:
-                op = consume().text
+                token_op = consume()
+                op = token_op.text
                 right = next_level_parser()
-                left = ast.BinaryOp(left, op, right)
+                left = ast.BinaryOp(token_op.loc, left, op, right)
             return left
 
         return parse_level
@@ -210,9 +215,9 @@ def parse(tokens: list[Token]) -> ast.Expression:
     def parse_assignment() -> ast.Expression:
         left = parse_expression()
         if peek().text == '=':
-            consume('=')
-            right = parse_assignment()  # right-associative
-            return ast.BinaryOp(left, '=', right)
+            token = consume('=')
+            right = parse_assignment()  # '=' right-associative
+            return ast.BinaryOp(token.loc, left, '=', right)
         return left
 
     result = parse_assignment()
@@ -221,3 +226,7 @@ def parse(tokens: list[Token]) -> ast.Expression:
         raise Exception(f'{peek().loc}: unexpected token "{peek().text}" after complete expression')
 
     return result
+
+if __name__ == "__main__":
+    result = parse(tokenize('x = { { f(a) } { b } }'))
+    print(result)

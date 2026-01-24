@@ -1,8 +1,11 @@
+from typing import Union
 from dataclasses import dataclass
+from compiler.tokenizer import Location, SpecialLocation
 
 @dataclass
 class Expression:
     """Base class for AST nodes representing expressions."""
+    loc: Union[Location, SpecialLocation]
 
 @dataclass
 class Literal(Expression):

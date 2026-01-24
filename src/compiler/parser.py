@@ -1,4 +1,4 @@
-from compiler.tokenizer import Token, tokenize
+from compiler.tokenizer import Token
 import compiler.ast as ast
 from typing import Callable
 
@@ -155,12 +155,19 @@ def parse(tokens: list[Token]) -> ast.Expression:
     def parse_var_expression() -> ast.Expression:
         token_var = consume('var')
         name = parse_factor()
+
+        typed = None
+        if peek().text == ':':
+            consume(':')
+            typed = parse_factor()
+
         consume('=')
         initializer = parse_assignment()
 
         return ast.VarExpr(
             token_var.loc,
             name,
+            typed,
             initializer
         )
 
@@ -220,13 +227,32 @@ def parse(tokens: list[Token]) -> ast.Expression:
             return ast.BinaryOp(token.loc, left, '=', right)
         return left
 
-    result = parse_assignment()
+    # result = parse_assignment()
 
-    if peek().type != 'end':
-        raise Exception(f'{peek().loc}: unexpected token "{peek().text}" after complete expression')
+    # if peek().type != 'end':
+    #     raise Exception(f'{peek().loc}: unexpected token "{peek().text}" after complete expression')
 
-    return result
+    # return result
 
-if __name__ == "__main__":
-    result = parse(tokenize('x = { { f(a) } { b } }'))
-    print(result)
+    statements = []
+
+    while peek().type != 'end':
+        stmt = parse_assignment()
+        statements.append(stmt)
+
+        if peek().text == ';':
+            consume(';')
+        elif peek().type != 'end':
+            raise Exception(
+                f'{peek().loc}: unexpected token "{peek().text}" after complete expression'
+            )
+
+    if len(statements) == 1:
+        return statements[0]
+
+    return ast.BlockExpr(
+        statements[0].loc,
+        statements
+    )
+
+

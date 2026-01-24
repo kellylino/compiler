@@ -2,7 +2,7 @@ import re
 from typing import Literal, Union
 from dataclasses import dataclass
 
-TokenType = Literal['int_literal', 'identifier', 'operators', 'punctuation', 'other', 'end']
+TokenType = Literal['int_literal', 'bool_literal', 'identifier', 'operators', 'punctuation', 'other', 'end']
 
 class SpecialLocation:
     def __eq__(self, other: object) -> bool:
@@ -18,7 +18,7 @@ class Location:
 @dataclass
 class Token:
     text: str
-    type: Literal['int_literal', 'identifier', 'operators', 'punctuation', 'other', 'end']
+    type: Literal['int_literal', 'bool_literal', 'identifier', 'operators', 'punctuation', 'other', 'end']
     loc: Union[Location, SpecialLocation]
 
     def __eq__(self, other: object) -> bool:
@@ -33,12 +33,14 @@ def tokenize(source_code: str) -> list[Token]:
     tokens = []
 
     identifiers = re.compile(r'[a-zA-Z_][a-zA-Z0-9_]*')
+    bool_literal = re.compile(r'\b(true|false)\b')
     non_negative_integer = re.compile(r'[0-9][0-9]*')
     operators = re.compile(r'==|!=|<=|>=|\+|\-|\*|/|%|=|<|>')
     punctuation = re.compile(r'[\(\)\{\},;]')
 
     patterns: list[tuple[re.Pattern[str], TokenType]] = [
         (identifiers, 'identifier'),
+        (bool_literal, 'bool_literal'),
         (non_negative_integer, 'int_literal'),
         (operators, 'operators'),
         (punctuation, 'punctuation')

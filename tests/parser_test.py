@@ -28,8 +28,8 @@ def UnaryOp(op:str, operand:ast.Expression) -> ast.UnaryOp:
 def BlockExpr(statements:list[ast.Expression]) -> ast.BlockExpr:
     return ast.BlockExpr(loc=L, statements=statements)
 
-def VarExpr(name:ast.Expression, initializer:ast.Expression) -> ast.VarExpr:
-    return ast.VarExpr(loc=L, name=name, initializer=initializer)
+def VarExpr(name:ast.Expression, typed: ast.Expression | None, initializer:ast.Expression) -> ast.VarExpr:
+    return ast.VarExpr(loc=L, name=name, typed=typed, initializer=initializer)
 
 # Task 1
 def test_parser_basics() -> None:
@@ -622,6 +622,7 @@ def test_var_expression() -> None:
     result = parse(tokenize('var x = 3'))
     assert result == VarExpr(
         name=Identifier('x'),
+        typed=None,
         initializer=Literal(3)
     )
 
@@ -630,6 +631,7 @@ def test_var_expression() -> None:
        statements=[
            VarExpr(
             name=Identifier('x'),
+            typed=None,
             initializer=Literal(3)
            )
        ]
@@ -646,6 +648,7 @@ def test_var_expression() -> None:
             ),
             VarExpr(
                 name=Identifier('x'),
+                typed=None,
                 initializer=Literal(8)
             ),
             FunctionExpr(
@@ -655,6 +658,13 @@ def test_var_expression() -> None:
                 ]
             )
         ]
+    )
+
+    result = parse(tokenize('var ID: T = E'))
+    assert result == VarExpr(
+        name=Identifier('ID'),
+        typed=Identifier('T'),
+        initializer=Identifier('E'),
     )
 
 def test_var_expression_in_other_lever() -> None:
@@ -799,3 +809,113 @@ def test_more_block_expression() -> None:
 # After add loc arg, add helper function to make tests less verbose
 
 # Task 9
+def test_multiple_top_level_expressions() -> None:
+
+    result = parse(tokenize('a = 1; b = 2; a + b'))
+    assert result == BlockExpr(
+        statements=[
+            BinaryOp(
+                left=Identifier('a'),
+                op='=',
+                right=Literal(1)
+            ),
+            BinaryOp(
+                left=Identifier('b'),
+                op='=',
+                right=Literal(2)
+            ),
+            BinaryOp(
+                left=Identifier('a'),
+                op='+',
+                right=Identifier('b')
+            )
+        ]
+)
+
+def test_syntax_example() -> None:
+
+    result = parse(tokenize("""
+        var n: Int = read_int();
+        print_int(n);
+        while n > 1 do {
+            if n % 2 == 0 then {
+                n = n / 2;
+            } else {
+                n = 3 * n + 1;
+            }
+            print_int(n);
+        }
+    """))
+
+    assert result == BlockExpr(
+        statements=[
+            VarExpr(
+                name=Identifier('n'),
+                typed=Identifier('Int'),
+                initializer=FunctionExpr(
+                    function_name=Identifier('read_int'),
+                    arguments=[]
+                )
+            ),
+            FunctionExpr(
+                function_name=Identifier('print_int'),
+                arguments=[Identifier('n')]
+            ),
+            WhileExpr(
+                condition=BinaryOp(
+                    left=Identifier('n'),
+                    op='>',
+                    right=Literal(1)
+                ),
+                body=BlockExpr(
+                    statements=[
+                        IfExpr(
+                            condition=BinaryOp(
+                                left=BinaryOp(
+                                    left=Identifier('n'),
+                                    op='%',
+                                    right=Literal(2)
+                                ),
+                                op='==',
+                                right=Literal(0)
+                            ),
+                            then_branch=BlockExpr(
+                                statements=[
+                                    BinaryOp(
+                                        left=Identifier('n'),
+                                        op='=',
+                                        right=BinaryOp(
+                                            left=Identifier('n'),
+                                            op='/',
+                                            right=Literal(2)
+                                        )
+                                    )
+                                ]
+                            ),
+                            else_branch=BlockExpr(
+                                statements=[
+                                    BinaryOp(
+                                        left=Identifier('n'),
+                                        op='=',
+                                        right=BinaryOp(
+                                            left=BinaryOp(
+                                                left=Literal(3),
+                                                op='*',
+                                                right=Identifier('n')
+                                            ),
+                                            op='+',
+                                            right=Literal(1)
+                                        )
+                                    )
+                                ]
+                            )
+                        ),
+                        FunctionExpr(
+                            function_name=Identifier('print_int'),
+                            arguments=[Identifier('n')]
+                        )
+                    ]
+                )
+            )
+        ]
+    )

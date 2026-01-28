@@ -13,8 +13,8 @@ def Identifier(name: str) -> ast.Identifier:
 def BinaryOp(left: ast.Expression, op: str, right: ast.Expression) -> ast.BinaryOp:
     return ast.BinaryOp(loc=L, left=left, op=op, right=right)
 
-def IfExpr(condition:ast.Expression, then_branch:ast.Expression, else_branch:ast.Expression | None) -> ast.IfExpr:
-    return ast.IfExpr(loc=L, condition=condition, then_branch=then_branch, else_branch=else_branch)
+def IfThenElse(condition:ast.Expression, then_branch:ast.Expression, else_branch:ast.Expression | None) -> ast.IfThenElse:
+    return ast.IfThenElse(loc=L, condition=condition, then_branch=then_branch, else_branch=else_branch)
 
 def WhileExpr(condition:ast.Expression, body:ast.Expression) -> ast.WhileExpr:
     return ast.WhileExpr(loc=L, condition=condition, body=body)
@@ -102,7 +102,7 @@ def test_empty_input() -> None:
 def test_single_if_expression() -> None:
 
     result = parse(tokenize('if a then b + c'))
-    assert result == IfExpr(
+    assert result == IfThenElse(
         condition=Identifier('a'),
         then_branch=BinaryOp(
             left=Identifier('b'),
@@ -115,7 +115,7 @@ def test_single_if_expression() -> None:
 def test_single_if_else_expression() -> None:
 
     result = parse(tokenize('if a then b + c else x * y'))
-    assert result == IfExpr(
+    assert result == IfThenElse(
         condition=Identifier('a'),
         then_branch=BinaryOp(
             left=Identifier('b'),
@@ -135,7 +135,7 @@ def test_single_if_else_and_other_expression() -> None:
     assert result_1 == BinaryOp(
         left=Literal(1),
         op='+',
-        right=IfExpr(
+        right=IfThenElse(
             condition=Identifier('true'),
             then_branch=Literal(2),
             else_branch=Literal(3)
@@ -154,7 +154,7 @@ def test_single_if_else_and_other_expression() -> None:
             )
         ),
         op='+',
-        right=IfExpr(
+        right=IfThenElse(
             condition=Identifier('true'),
             then_branch=Literal(2),
             else_branch=Literal(3)
@@ -168,7 +168,7 @@ def test_single_if_else_and_other_expression() -> None:
         right=BinaryOp(
             left=Identifier('b'),
             op='*',
-            right=IfExpr(
+            right=IfThenElse(
                 condition=Identifier('true'),
                 then_branch=Literal(2),
                 else_branch=Literal(3)
@@ -179,10 +179,10 @@ def test_single_if_else_and_other_expression() -> None:
 def test_nested_if_else_expression() -> None:
 
     result = parse(tokenize('if a then b else if c then d else e'))
-    assert result == IfExpr(
+    assert result == IfThenElse(
         condition=Identifier('a'),
         then_branch=Identifier('b'),
-        else_branch=IfExpr(
+        else_branch=IfThenElse(
             condition=Identifier('c'),
             then_branch=Identifier('d'),
             else_branch=Identifier('e')
@@ -195,10 +195,10 @@ def test_nested_if_else_and_other_expression() -> None:
     assert result_1 == BinaryOp(
         left=Literal(1),
         op='+',
-        right=IfExpr(
+        right=IfThenElse(
             condition=Identifier('true'),
             then_branch=Literal(2),
-            else_branch=IfExpr(
+            else_branch=IfThenElse(
                 condition=Identifier('c'),
                 then_branch=Identifier('d'),
                 else_branch=Identifier('e')
@@ -218,10 +218,10 @@ def test_nested_if_else_and_other_expression() -> None:
             )
         ),
         op='+',
-        right=IfExpr(
+        right=IfThenElse(
             condition=Identifier('true'),
             then_branch=Literal(2),
-            else_branch=IfExpr(
+            else_branch=IfThenElse(
                 condition=Literal(1),
                 then_branch=Identifier('d'),
                 else_branch=Identifier('e')
@@ -233,13 +233,13 @@ def test_nested_if_else_and_other_expression() -> None:
     assert result_3 == BinaryOp(
         left=Identifier('a'),
         op='+',
-        right=IfExpr(
+        right=IfThenElse(
             condition=Identifier('b'),
             then_branch=Identifier('c'),
             else_branch=BinaryOp(
                 left=Identifier('d'),
                 op='*',
-                right=IfExpr(
+                right=IfThenElse(
                     condition=Identifier('e'),
                     then_branch=Identifier('f'),
                     else_branch=Identifier('g')
@@ -571,7 +571,7 @@ def test_complex_block_expression() -> None:
                         BinaryOp(
                             left=Identifier('y'),
                             op='=',
-                            right=IfExpr(
+                            right=IfThenElse(
                                 condition=FunctionExpr(
                                     function_name=Identifier('g'),
                                     arguments=[
@@ -711,7 +711,7 @@ def test_more_block_expression() -> None:
     result = parse(tokenize('{ if true then { a } b }'))
     assert result == BlockExpr(
         statements=[
-            IfExpr(
+            IfThenElse(
                 condition=Identifier('true'),
                 then_branch=BlockExpr(
                     statements=[
@@ -727,7 +727,7 @@ def test_more_block_expression() -> None:
     result = parse(tokenize('{ if true then { a }; b }'))
     assert result == BlockExpr(
         statements=[
-            IfExpr(
+            IfThenElse(
                 condition=Identifier('true'),
                 then_branch=BlockExpr(
                     statements=[
@@ -746,7 +746,7 @@ def test_more_block_expression() -> None:
     result = parse(tokenize('{ if true then { a }; b; c }'))
     assert result == BlockExpr(
         statements=[
-            IfExpr(
+            IfThenElse(
                 condition=Identifier('true'),
                 then_branch=BlockExpr(
                     statements=[
@@ -763,7 +763,7 @@ def test_more_block_expression() -> None:
     result = parse(tokenize('{ if true then { a } else { b } c }'))
     assert result == BlockExpr(
         statements=[
-            IfExpr(
+            IfThenElse(
                 condition=Identifier('true'),
                 then_branch=BlockExpr(
                     statements=[
@@ -869,7 +869,7 @@ def test_syntax_example() -> None:
                 ),
                 body=BlockExpr(
                     statements=[
-                        IfExpr(
+                        IfThenElse(
                             condition=BinaryOp(
                                 left=BinaryOp(
                                     left=Identifier('n'),

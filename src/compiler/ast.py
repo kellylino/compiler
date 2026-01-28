@@ -23,11 +23,11 @@ class BinaryOp(Expression):
     right: Expression
 
 @dataclass
-class IfExpr(Expression):
+class IfThenElse(Expression):
     """AST node for if-then-else expression"""
     condition: Expression
     then_branch: Expression
-    else_branch: Expression | None  #optional
+    else_branch: Expression | None = None
 
 @dataclass
 class WhileExpr(Expression):
@@ -53,5 +53,5 @@ class BlockExpr(Expression):
 @dataclass
 class VarExpr(Expression):
     name: Expression
-    typed: Expression | None
     initializer: Expression
+    typed: Expression | None = None

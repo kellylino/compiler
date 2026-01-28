@@ -96,7 +96,7 @@ def parse(tokens: list[Token]) -> ast.Expression:
             consume('else')
             else_branch = parse_expression_no_var()
 
-        return ast.IfExpr(
+        return ast.IfThenElse(
             token_if.loc,
             condition,
             then_branch,
@@ -167,8 +167,8 @@ def parse(tokens: list[Token]) -> ast.Expression:
         return ast.VarExpr(
             token_var.loc,
             name,
-            typed,
-            initializer
+            initializer,
+            typed
         )
 
     def parse_unary_expression() -> ast.Expression:

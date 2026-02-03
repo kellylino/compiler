@@ -1,4 +1,4 @@
-from typing import Any, Optional, Callable
+from typing import Any, Optional
 from compiler import ast
 from compiler.parser import parse
 from compiler.tokenizer import tokenize
@@ -220,19 +220,3 @@ def interpret(node: ast.Expression, env: SymTab) -> Value:
             raise NotImplementedError(
                 f"Interpreter not implemented for {type(node).__name__}"
             )
-
-if __name__ == "__main__":
-    env = setup_global_env()
-
-    # exp = 'var a = 5; a = 6 + 1; print_int(a); a < 10'
-    # result = interpret(parse(tokenize(exp)), env)
-    # print(result)
-
-    exp = """
-        var evaluated_right_hand_side = false;
-        true or { evaluated_right_hand_side = true; true };
-        evaluated_right_hand_side
-    """
-
-    result = interpret(parse(tokenize(exp)), env)
-    print(result)

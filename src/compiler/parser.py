@@ -156,10 +156,34 @@ def parse(tokens: list[Token]) -> ast.Expression:
         token_var = consume('var')
         name = parse_factor()
 
-        typed = None
+        typed: ast.Expression | None = None
+
         if peek().text == ':':
             consume(':')
-            typed = parse_factor()
+            if peek().text == '(':
+                consume('(')
+                param_types = []
+                while True:
+                    param_type = parse_factor()
+                    param_types.append(param_type)
+
+                    if peek().text == ',':
+                        consume(',')
+                    else:
+                        break
+
+                consume(')')
+                consume('=')
+                consume('>')
+                return_type = parse_factor()
+
+                typed = ast.FunctionTypeExpr(
+                    token_var.loc,
+                    param_types,
+                    return_type
+                )
+            else:
+                typed = parse_factor()
 
         consume('=')
         initializer = parse_assignment()

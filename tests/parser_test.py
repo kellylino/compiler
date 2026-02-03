@@ -28,8 +28,14 @@ def UnaryOp(op:str, operand:ast.Expression) -> ast.UnaryOp:
 def BlockExpr(statements:list[ast.Expression]) -> ast.BlockExpr:
     return ast.BlockExpr(loc=L, statements=statements)
 
-def VarExpr(name:ast.Expression, typed: ast.Expression | None, initializer:ast.Expression) -> ast.VarExpr:
+# def VarExpr(name:ast.Expression, initializer:ast.Expression, typed: ast.Expression | None = None, function_type: ast.Expression | None = None) -> ast.VarExpr:
+#     return ast.VarExpr(loc=L, name=name, typed=typed, initializer=initializer, function_type=function_type)
+
+def VarExpr(name:ast.Expression, initializer:ast.Expression, typed: ast.Expression | None = None) -> ast.VarExpr:
     return ast.VarExpr(loc=L, name=name, typed=typed, initializer=initializer)
+
+def FunctionTypeExpr(param_types:list[ast.Expression], return_type:ast.Expression) -> ast.FunctionTypeExpr:
+    return ast.FunctionTypeExpr(loc=L, param_types=param_types, return_type=return_type)
 
 # Task 1
 def test_parser_basics() -> None:
@@ -916,6 +922,28 @@ def test_syntax_example() -> None:
                         )
                     ]
                 )
+            )
+        ]
+    )
+
+def test_var_function_type_expression() -> None:
+    result = parse(tokenize('{ var f: (Int) => Unit = print_int; f(123) }'))
+
+    assert result == BlockExpr(
+        statements=[
+            VarExpr(
+                name=Identifier('f'),
+                typed=FunctionTypeExpr(
+                    param_types=[Identifier('Int')],
+                    return_type=Identifier('Unit')
+                ),
+                initializer=Identifier('print_int')
+            ),
+            FunctionExpr(
+                function_name=Identifier('f'),
+                arguments=[
+                    Literal(123)
+                ]
             )
         ]
     )

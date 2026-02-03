@@ -2,6 +2,7 @@ from compiler.tokenizer import tokenize, L
 from compiler.interpreter import interpret, setup_global_env
 from compiler.parser import parse
 import compiler.ast as ast
+from pytest import MonkeyPatch
 import pytest
 
 #helper functions:
@@ -168,3 +169,51 @@ def test_errors() -> None:
     with pytest.raises(NameError):
         interpret(parse(tokenize("x + 1")), env)
 
+def test_collatz_program(capsys: pytest.CaptureFixture[str], monkeypatch: MonkeyPatch) -> None:
+    env = setup_global_env()
+
+    # Mock input() so read_int() returns 6
+    monkeypatch.setattr("builtins.input", lambda: "6")
+
+    program = """
+        var n: Int = read_int();
+        print_int(n);
+        while n > 1 do {
+            if n % 2 == 0 then {
+                n = n / 2;
+            } else {
+                n = 3*n + 1;
+            }
+            print_int(n);
+        }
+    """
+
+    result = interpret(parse(tokenize(program)), env)
+
+    captured = capsys.readouterr().out.strip().splitlines()
+
+    assert captured == [
+        "6",
+        "3",
+        "10",
+        "5",
+        "16",
+        "8",
+        "4",
+        "2",
+        "1",
+    ]
+
+def test_assignment_in_function_updates_outer_scope(capsys: pytest.CaptureFixture[str]) -> None:
+    env = setup_global_env()
+
+    program = """
+        var x = 1;
+        x = 2;
+        print_int(x)
+    """
+
+    interpret(parse(tokenize(program)), env)
+
+    captured = capsys.readouterr().out.strip()
+    assert captured == "2"

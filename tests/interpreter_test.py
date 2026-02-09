@@ -30,7 +30,7 @@ def UnaryOp(op:str, operand:ast.Expression) -> ast.UnaryOp:
 def BlockExpr(statements:list[ast.Expression]) -> ast.BlockExpr:
     return ast.BlockExpr(loc=L, statements=statements)
 
-def VarExpr(name:ast.Expression, typed: ast.Expression | None, initializer:ast.Expression) -> ast.VarExpr:
+def VarExpr(name:str, typed: ast.Expression | None, initializer:ast.Expression) -> ast.VarExpr:
     return ast.VarExpr(loc=L, name=name, typed=typed, initializer=initializer)
 
 def test_interpret_basics() -> None:

@@ -119,6 +119,9 @@ def setup_global_env() -> SymTab:
 
     env.define("true", True)
     env.define("false", False)
+    env.define("Int", "Int")
+    env.define("Bool", "Bool")
+    env.define("Unit", "Unit")
 
     return env
 
@@ -209,8 +212,8 @@ def interpret(node: ast.Expression, env: SymTab) -> Value:
             return block_result
 
         case ast.VarExpr():
-            assert isinstance(node.name, ast.Identifier)
-            name = node.name.name
+            assert isinstance(node.name, str)
+            name = node.name
             value = interpret(node.initializer, env)
             env.define(name, value)
 

@@ -83,23 +83,6 @@ def typecheck_helper(node: ast.Expression, env: SymTab) -> Type:
 
             return op_type.return_type
 
-        case ast.BinaryOp():
-
-            op_type = env.lookup(node.op)
-            if not isinstance(op_type, FunType):
-                raise TypeError(f"'{node.op}' is not a binary operator")
-
-            t1 = typecheck(node.left, env)
-            t2 = typecheck(node.right, env)
-
-            expected_param_types = op_type.params
-            if expected_param_types != (t1, t2):
-                raise TypeError(
-                    f"Operator '{node.op}' expects operands of type {expected_param_types}, got {t1} and {t2}"
-                )
-
-            return op_type.return_type
-
         case ast.BinaryOp() if node.op == "=":
 
             var = typecheck(node.left, env)
@@ -121,6 +104,23 @@ def typecheck_helper(node: ast.Expression, env: SymTab) -> Type:
                 )
 
             return Bool
+
+        case ast.BinaryOp():
+
+            op_type = env.lookup(node.op)
+            if not isinstance(op_type, FunType):
+                raise TypeError(f"'{node.op}' is not a binary operator")
+
+            t1 = typecheck(node.left, env)
+            t2 = typecheck(node.right, env)
+
+            expected_param_types = op_type.params
+            if expected_param_types != (t1, t2):
+                raise TypeError(
+                    f"Operator '{node.op}' expects operands of type {expected_param_types}, got {t1} and {t2}"
+                )
+
+            return op_type.return_type
 
         case ast.IfThenElse():
 
@@ -150,6 +150,8 @@ def typecheck_helper(node: ast.Expression, env: SymTab) -> Type:
             return Unit
 
         case ast.FunctionExpr():
+            if len(node.arguments) > 6:
+                raise TypeError("Functions with more than 6 arguments are not supported")
 
             assert isinstance(node.function_name, ast.Identifier)
             func_type = env.lookup(node.function_name.name)
@@ -174,16 +176,22 @@ def typecheck_helper(node: ast.Expression, env: SymTab) -> Type:
             return last_type
 
         case ast.FunctionTypeExpr():
+            if node.param_types is not None and len(node.param_types) > 6:
+                raise TypeError("Functions with more than 6 parameters are not supported")
 
-            param_types = tuple(typecheck(param, env) for param in node.param_types)
+            if node.param_types is not None:
+                param_types = tuple(typecheck(param, env) for param in node.param_types)
+            else:
+                param_types = ()
+
             return_type = typecheck(node.return_type, env)
 
             return FunType(param_types, return_type)
 
         case ast.VarExpr():
 
-            assert isinstance(node.name, ast.Identifier)
-            name = node.name.name
+            assert isinstance(node.name, str)
+            name = node.name
             init_type = typecheck(node.initializer, env)
 
             if node.typed is not None:
@@ -194,7 +202,7 @@ def typecheck_helper(node: ast.Expression, env: SymTab) -> Type:
                     )
 
             env.define(name, init_type)
-            return init_type
+            return Unit
 
         case _:
             raise TypeError(f"Unknown AST node: {node}")

@@ -1,12 +1,13 @@
 from typing import Union
 from dataclasses import  dataclass, field
-from compiler.tokenizer import Location, SpecialLocation
+from compiler.tokenizer import Location
 from compiler.types import Type, Unit
 
 @dataclass
 class Expression:
     """Base class for AST nodes representing expressions."""
-    loc: Union[Location, SpecialLocation]
+    # loc: Union[Location, SpecialLocation]
+    loc: Location
     type: Type = field(kw_only=True, default_factory=lambda: Unit)
 
 @dataclass
@@ -53,11 +54,11 @@ class BlockExpr(Expression):
 
 @dataclass
 class FunctionTypeExpr(Expression):
-    param_types: list[Expression]
     return_type: Expression
+    param_types: list[Expression] | None = None
 
 @dataclass
 class VarExpr(Expression):
-    name: Expression
+    name: str
     initializer: Expression
     typed: Expression | None = None

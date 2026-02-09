@@ -4,22 +4,26 @@ from dataclasses import dataclass
 
 TokenType = Literal['int_literal', 'bool_literal', 'identifier', 'operators', 'punctuation', 'other', 'end']
 
-class SpecialLocation:
-    def __eq__(self, other: object) -> bool:
-        return True
-
-L = SpecialLocation()
+# class SpecialLocation:
+#     def __eq__(self, other: object) -> bool:
+#         return True
 
 @dataclass
 class Location:
     line: int
     column: int
 
+    def __eq__(self, other: object) -> bool:
+        return True
+
+L = Location(0, 0)
+
 @dataclass
 class Token:
     text: str
     type: Literal['int_literal', 'bool_literal', 'identifier', 'operators', 'punctuation', 'other', 'end']
-    loc: Union[Location, SpecialLocation]
+    loc: Location
+    # loc: Union[Location, SpecialLocation]
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, Token):

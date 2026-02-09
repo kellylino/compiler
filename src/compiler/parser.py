@@ -134,6 +134,8 @@ def parse(tokens: list[Token]) -> ast.Expression:
 
     def parse_block() -> ast.Expression:
         token_block = consume('{')
+        if peek().text == '}':
+            return ast.Identifier(token_block.loc, "Unit")
 
         statements = []
         while peek().text != '}':
@@ -147,6 +149,8 @@ def parse(tokens: list[Token]) -> ast.Expression:
 
             if peek().text == ';':
                 consume(';')
+                if peek().text == '}':
+                    statements.append(ast.Identifier(arg.loc, "Unit"))
 
         consume('}')
 
@@ -154,7 +158,8 @@ def parse(tokens: list[Token]) -> ast.Expression:
 
     def parse_var_expression() -> ast.Expression:
         token_var = consume('var')
-        name = parse_factor()
+        name_token = parse_identifier()
+        name = name_token.name
 
         typed: ast.Expression | None = None
 
@@ -162,15 +167,18 @@ def parse(tokens: list[Token]) -> ast.Expression:
             consume(':')
             if peek().text == '(':
                 consume('(')
-                param_types = []
-                while True:
-                    param_type = parse_factor()
-                    param_types.append(param_type)
+                if peek().text == ')':
+                    param_types = None
+                else:
+                    param_types = []
+                    while True:
+                        param_type = parse_factor()
+                        param_types.append(param_type)
 
-                    if peek().text == ',':
-                        consume(',')
-                    else:
-                        break
+                        if peek().text == ',':
+                            consume(',')
+                        else:
+                            break
 
                 consume(')')
                 consume('=')
@@ -179,8 +187,8 @@ def parse(tokens: list[Token]) -> ast.Expression:
 
                 typed = ast.FunctionTypeExpr(
                     token_var.loc,
-                    param_types,
-                    return_type
+                    return_type,
+                    param_types
                 )
             else:
                 typed = parse_factor()
@@ -251,13 +259,6 @@ def parse(tokens: list[Token]) -> ast.Expression:
             return ast.BinaryOp(token.loc, left, '=', right)
         return left
 
-    # result = parse_assignment()
-
-    # if peek().type != 'end':
-    #     raise Exception(f'{peek().loc}: unexpected token "{peek().text}" after complete expression')
-
-    # return result
-
     statements = []
 
     while peek().type != 'end':
@@ -266,6 +267,9 @@ def parse(tokens: list[Token]) -> ast.Expression:
 
         if peek().text == ';':
             consume(';')
+            if peek().type == 'end' and len(statements) == 1:
+                statements.append(ast.Identifier(peek().loc, "Unit"))
+
         elif peek().type != 'end':
             raise Exception(
                 f'{peek().loc}: unexpected token "{peek().text}" after complete expression'

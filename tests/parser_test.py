@@ -31,11 +31,11 @@ def BlockExpr(statements:list[ast.Expression]) -> ast.BlockExpr:
 # def VarExpr(name:ast.Expression, initializer:ast.Expression, typed: ast.Expression | None = None, function_type: ast.Expression | None = None) -> ast.VarExpr:
 #     return ast.VarExpr(loc=L, name=name, typed=typed, initializer=initializer, function_type=function_type)
 
-def VarExpr(name:ast.Expression, initializer:ast.Expression, typed: ast.Expression | None = None) -> ast.VarExpr:
+def VarExpr(name:str, initializer:ast.Expression, typed: ast.Expression | None = None) -> ast.VarExpr:
     return ast.VarExpr(loc=L, name=name, typed=typed, initializer=initializer)
 
-def FunctionTypeExpr(param_types:list[ast.Expression], return_type:ast.Expression) -> ast.FunctionTypeExpr:
-    return ast.FunctionTypeExpr(loc=L, param_types=param_types, return_type=return_type)
+def FunctionTypeExpr(return_type:ast.Expression, param_types:list[ast.Expression] | None = None) -> ast.FunctionTypeExpr:
+    return ast.FunctionTypeExpr(loc=L, return_type=return_type, param_types=param_types)
 
 # Task 1
 def test_parser_basics() -> None:
@@ -615,7 +615,8 @@ def test_complex_block_expression() -> None:
                             arguments=[
                                 Identifier('y')
                             ]
-                        )
+                        ),
+                        Identifier('Unit')
                     ]
                 )
             ),
@@ -627,7 +628,7 @@ def test_complex_block_expression() -> None:
 def test_var_expression() -> None:
     result = parse(tokenize('var x = 3'))
     assert result == VarExpr(
-        name=Identifier('x'),
+        name='x',
         typed=None,
         initializer=Literal(3)
     )
@@ -636,7 +637,7 @@ def test_var_expression() -> None:
     assert result_2 == BlockExpr(
        statements=[
            VarExpr(
-            name=Identifier('x'),
+            name='x',
             typed=None,
             initializer=Literal(3)
            )
@@ -653,7 +654,7 @@ def test_var_expression() -> None:
                 ]
             ),
             VarExpr(
-                name=Identifier('x'),
+                name='x',
                 typed=None,
                 initializer=Literal(8)
             ),
@@ -668,7 +669,7 @@ def test_var_expression() -> None:
 
     result = parse(tokenize('var ID: T = E'))
     assert result == VarExpr(
-        name=Identifier('ID'),
+        name='ID',
         typed=Identifier('T'),
         initializer=Identifier('E'),
     )
@@ -856,7 +857,7 @@ def test_syntax_example() -> None:
     assert result == BlockExpr(
         statements=[
             VarExpr(
-                name=Identifier('n'),
+                name='n',
                 typed=Identifier('Int'),
                 initializer=FunctionExpr(
                     function_name=Identifier('read_int'),
@@ -895,7 +896,8 @@ def test_syntax_example() -> None:
                                             op='/',
                                             right=Literal(2)
                                         )
-                                    )
+                                    ),
+                                    Identifier('Unit')
                                 ]
                             ),
                             else_branch=BlockExpr(
@@ -912,14 +914,16 @@ def test_syntax_example() -> None:
                                             op='+',
                                             right=Literal(1)
                                         )
-                                    )
+                                    ),
+                                    Identifier('Unit')
                                 ]
                             )
                         ),
                         FunctionExpr(
                             function_name=Identifier('print_int'),
                             arguments=[Identifier('n')]
-                        )
+                        ),
+                        Identifier('Unit')
                     ]
                 )
             )
@@ -932,10 +936,10 @@ def test_var_function_type_expression() -> None:
     assert result == BlockExpr(
         statements=[
             VarExpr(
-                name=Identifier('f'),
+                name='f',
                 typed=FunctionTypeExpr(
-                    param_types=[Identifier('Int')],
-                    return_type=Identifier('Unit')
+                    return_type=Identifier('Unit'),
+                    param_types=[Identifier('Int')]
                 ),
                 initializer=Identifier('print_int')
             ),
@@ -945,5 +949,39 @@ def test_var_function_type_expression() -> None:
                     Literal(123)
                 ]
             )
+        ]
+    )
+
+def test_var_function_type_expression_no_param() -> None:
+    result = parse(tokenize('{ var f: () => Unit = print_int; f() }'))
+
+    assert result == BlockExpr(
+        statements=[
+            VarExpr(
+                name='f',
+                typed=FunctionTypeExpr(
+                    return_type=Identifier('Unit'),
+                    param_types=None
+                ),
+                initializer=Identifier('print_int')
+            ),
+            FunctionExpr(
+                function_name=Identifier('f'),
+                arguments=[]
+            )
+        ]
+    )
+
+def test_var_with_semicolon_end() -> None:
+    result = parse(tokenize('var x = 3;'))
+
+    assert result == BlockExpr(
+        statements=[
+            VarExpr(
+                name='x',
+                typed=None,
+                initializer=Literal(3)
+            ),
+            Identifier('Unit')
         ]
     )

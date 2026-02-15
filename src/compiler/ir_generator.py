@@ -130,7 +130,6 @@ def generate_ir(
                 return var_left
 
             case ast.BinaryOp() if expr.op == "or":
-                # Short-circuiting 'or' can be implemented using a conditional jump.
                 l_right = new_label(expr.right.loc, 'or_right')
                 l_end = new_label(expr.right.loc,'or_end')
                 l_skip= new_label(expr.right.loc,'or_skip')
@@ -337,7 +336,7 @@ if __name__ == "__main__":
     #         print_int(n);
     #     }
     # """))
-    expr = parse(tokenize('true or false'))
+    expr = parse(tokenize('var x = false; x or { print_int(123); true };'))
     env = setup_type_env()
     typecheck(expr, env)
 

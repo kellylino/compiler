@@ -64,3 +64,45 @@ def test_tokenizer_if_statement() -> None:
     ]
 
     assert tokenize(source) == expected_tokens
+
+def test_complex_tokenizer() -> None:
+    src = """var i = 1;
+        var s = 0;
+        while i <= 5 do {
+            s = s + i;
+            i = i + 1;
+        }
+        s"""
+
+    expected_tokens = [
+        Token(loc=L, type="identifier", text="var"),
+        Token(loc=L, type="identifier", text="i"),
+        Token(loc=L, type="operators", text="="),
+        Token(loc=L, type="int_literal", text="1"),
+        Token(loc=L, type="punctuation", text=";"),
+        Token(loc=L, type="identifier", text="var"),
+        Token(loc=L, type="identifier", text="s"),
+        Token(loc=L, type="operators", text="="),
+        Token(loc=L, type="int_literal", text="0"),
+        Token(loc=L, type="punctuation", text=";"),
+        Token(loc=L, type="identifier", text="while"),
+        Token(loc=L, type="identifier", text="i"),
+        Token(loc=L, type="operators", text="<="),
+        Token(loc=L, type="int_literal", text="5"),
+        Token(loc=L, type="identifier", text="do"),
+        Token(loc=L, type="punctuation", text="{"),
+        Token(loc=L, type="identifier", text="s"),
+        Token(loc=L, type="operators", text="="),
+        Token(loc=L, type="identifier", text="s"),
+        Token(loc=L, type="operators", text="+"),
+        Token(loc=L, type="identifier", text="i"),
+        Token(loc=L, type="punctuation", text=";"),
+        Token(loc=L, type="identifier", text="i"),
+        Token(loc=L, type="operators", text="="),
+        Token(loc=L, type="identifier", text="i"),
+        Token(loc=L, type="operators", text="+"),
+        Token(loc=L, type="int_literal", text="1"),
+        Token(loc=L, type="punctuation", text=";"),
+        Token(loc=L, type="punctuation", text="}"),
+        Token(loc=L, type="identifier", text="s"),
+    ]

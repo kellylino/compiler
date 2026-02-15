@@ -812,6 +812,36 @@ def test_more_block_expression() -> None:
         )
     )
 
+    result = parse(tokenize('var x = { { print_int(1) } { 2 } } x'))
+    assert result == BlockExpr(
+        statements=[
+            VarExpr(
+                name='x',
+                typed=None,
+                initializer=BlockExpr(
+                    statements=[
+                        BlockExpr(
+                            statements=[
+                                FunctionExpr(
+                                    function_name=Identifier('print_int'),
+                                    arguments=[
+                                        Literal(1)
+                                    ]
+                                )
+                            ]
+                        ),
+                        BlockExpr(
+                            statements=[
+                                Literal(2)
+                            ]
+                        )
+                    ]
+                )
+            ),
+            Identifier('x')
+        ]
+    )
+
 # Task 8
 # After add loc arg, add helper function to make tests less verbose
 
@@ -983,5 +1013,100 @@ def test_var_with_semicolon_end() -> None:
                 initializer=Literal(3)
             ),
             Identifier('Unit')
+        ]
+    )
+
+def test_complex_expr() -> None:
+    result = parse(tokenize("""var i = 1;
+        var s = 0;
+        while i <= 5 do {
+            s = s + i;
+            i = i + 1;
+        }
+        s"""))
+
+
+    assert result == BlockExpr(
+        statements=[
+            VarExpr(
+                name='i',
+                typed=None,
+                initializer=Literal(1)
+            ),
+            VarExpr(
+                name='s',
+                typed=None,
+                initializer=Literal(0)
+            ),
+            WhileExpr(
+                condition=BinaryOp(
+                    left=Identifier('i'),
+                    op='<=',
+                    right=Literal(5)
+                ),
+                body=BlockExpr(
+                    statements=[
+                        BinaryOp(
+                            left=Identifier('s'),
+                            op='=',
+                            right=BinaryOp(
+                                left=Identifier('s'),
+                                op='+',
+                                right=Identifier('i')
+                            )
+                        ),
+                        BinaryOp(
+                            left=Identifier('i'),
+                            op='=',
+                            right=BinaryOp(
+                                left=Identifier('i'),
+                                op='+',
+                                right=Literal(1)
+                            )
+                        ),
+                        Identifier('Unit')
+                    ]
+                )
+            ),
+            Identifier('s')
+        ]
+    )
+
+    result = parse(tokenize("""var x = 3;
+            {
+                x = 4;
+                {
+                    x = 5;
+                }
+            }
+            x"""))
+
+    assert result == BlockExpr(
+        statements=[
+            VarExpr(
+                name='x',
+                typed=None,
+                initializer=Literal(3)
+            ),
+            BlockExpr(
+                statements=[
+                    BinaryOp(
+                        left=Identifier('x'),
+                        op='=',
+                        right=Literal(4)
+                    ),
+                    BlockExpr(
+                        statements=[
+                            BinaryOp(
+                                left=Identifier('x'),
+                                op='=',
+                                right=Literal(5)
+                            ),
+                            Identifier('Unit')
+                        ]
+                    )
+                ]
+            ),
+            Identifier('x')
         ]
     )

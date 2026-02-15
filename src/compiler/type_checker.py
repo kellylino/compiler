@@ -105,8 +105,23 @@ def typecheck_helper(node: ast.Expression, env: SymTab) -> Type:
 
             return Bool
 
-        case ast.BinaryOp():
+        # case ast.BinaryOp() if node.op in ("and", "or"):
+        #     t1 = typecheck(node.left, env)
+        #     t2 = typecheck(node.right, env)
 
+        #     if node.op == "or":
+        #         if t1 == Bool and node.left.value == "true":
+        #             return Bool
+        #         else:
+        #             return t2
+
+        #     if node.op == "and":
+        #         if t2 == Bool and node.left.value == 'false':
+        #             return Bool
+        #         else:
+        #             return t2
+
+        case ast.BinaryOp():
             op_type = env.lookup(node.op)
             if not isinstance(op_type, FunType):
                 raise TypeError(f"'{node.op}' is not a binary operator")

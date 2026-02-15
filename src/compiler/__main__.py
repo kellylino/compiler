@@ -6,13 +6,27 @@ from socketserver import ForkingTCPServer, StreamRequestHandler
 from traceback import format_exception
 from typing import Any
 
+from compiler.assembler import assemble_and_get_executable
+from compiler.ir_generator import generate_ir, reserved_names
+from compiler.type_checker import setup_type_env, typecheck
+from compiler.parser import parse as pasre
+from compiler.tokenizer import tokenize
+from compiler.assembly_generator import generate_assembly
+
 
 def call_compiler(source_code: str) -> bytes:
     # *** TODO ***
     # Call your compiler here and return the compiled executable.
     # Raise an exception on compilation error.
     # *** TODO ***
-    raise NotImplementedError("Compiler not implemented")
+    expr = pasre(tokenize(source_code))
+    env = setup_type_env()
+    typecheck(expr, env)
+    ins = generate_ir(reserved_names, expr)
+    assembly = generate_assembly(ins)
+    executable = assemble_and_get_executable(assembly)
+
+    return executable
 
 
 def main() -> int:

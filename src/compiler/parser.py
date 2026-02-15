@@ -267,8 +267,11 @@ def parse(tokens: list[Token]) -> ast.Expression:
 
         if peek().text == ';':
             consume(';')
-            if peek().type == 'end' and len(statements) == 1:
+            if peek().type == 'end':
                 statements.append(ast.Identifier(peek().loc, "Unit"))
+
+        elif tokens[pos-1].text == '}' or tokens[pos-1].text == ';':
+            continue
 
         elif peek().type != 'end':
             raise Exception(

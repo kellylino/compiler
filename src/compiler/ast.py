@@ -62,3 +62,31 @@ class VarExpr(Expression):
     name: str
     initializer: Expression
     typed: Expression | None = None
+
+@dataclass
+class BreakExpr(Expression):
+    result: Expression | None = None
+
+@dataclass
+class ContinueExpr(Expression):
+    pass
+
+@dataclass
+class ModuleExpr(Expression):
+    items: Expression
+
+@dataclass
+class FunDefExpr(Expression):
+    name: Expression
+    params: Expression
+    result_type: Expression
+    body: Expression
+
+@dataclass
+class FunDefArgExpr(Expression):
+    name: Expression
+    fun_type: Expression
+
+@dataclass
+class ReturnExpr(Expression):
+    result: Expression | None = None

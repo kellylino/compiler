@@ -219,6 +219,34 @@ def parse(tokens: list[Token]) -> ast.Expression:
             )
         return parse_assignment()
 
+    def parse_break_expression() -> ast.Expression:
+        loc = consume('break')
+
+        return ast.BreakExpr(loc.loc)
+
+    def parse_continue_expression() -> ast.Expression:
+        loc = consume('continue')
+
+        return ast.ContinueExpr(loc.loc)
+
+    def parse_return_expression() -> ast.Expression:
+        loc = consume('return')
+
+        result = None
+
+        result = parse_assignment()
+
+        return ast.ReturnExpr(loc.loc, result)
+
+    def parse_fun_def_expression() -> ast.Expression:
+        loc = consume('fun')
+
+        result = None
+
+        result = parse_assignment()
+
+        return ast.FunDefExpr(loc.loc, name, params, result_type, body)
+
     def make_binary_parser(operators_levels: list[list[str]], level: int) -> Callable:
 
         if level >= len(operators_levels):
@@ -231,6 +259,12 @@ def parse(tokens: list[Token]) -> ast.Expression:
                     return parse_var_expression()
                 elif peek().text == 'not' or peek().text == '-':
                     return parse_unary_expression()
+                elif peek().text == 'break':
+                    return parse_break_expression()
+                elif peek().text == 'continue':
+                    return parse_continue_expression()
+                elif peek().text == 'return':
+                    return parse_return_expression()
                 return parse_factor()
             return parse_base
 

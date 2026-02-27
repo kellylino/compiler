@@ -5,9 +5,18 @@ from compiler.types import Bool, Int, Type, Unit
 T = TypeVar('T')
 
 class SymTab(Generic[T]):
+    loop_start: Optional[ir.Label]
+    loop_end: Optional[ir.Label]
+
     def __init__(self, parent: Optional["SymTab[T]"] = None):
         self.parent = parent
         self.table: dict[str, T] = {}
+        if parent:
+            self.loop_start = parent.loop_start
+            self.loop_end = parent.loop_end
+        else:
+            self.loop_start = None
+            self.loop_end = None
 
     def add_local(self, name: str, value: T) -> None:
         self.table[name] = value
@@ -20,6 +29,18 @@ class SymTab(Generic[T]):
             return self.parent.require(name)
 
         raise KeyError(f"Undefined identifier '{name}'")
+
+    def enter_loop(self, start: ir.Label, end: ir.Label) -> None:
+        self.loop_start = start
+        self.loop_end = end
+
+    def exit_loop(self) -> None:
+        if self.parent:
+            self.loop_start = self.parent.loop_start
+            self.loop_end = self.parent.loop_end
+        else:
+            self.loop_start = None
+            self.loop_end = None
 
     def assign(self, name: str, value: T) -> None:
         if name in self.table:
@@ -243,6 +264,9 @@ def generate_ir(
                 l_body = new_label(expr.body.loc, 'while_body')
                 l_end = new_label(expr.loc, 'while_end')
 
+
+                st.enter_loop(l_start, l_end)
+
                 var_cond = visit(st, expr.condition)
                 ins.append(ir.CondJump(loc, var_cond, l_body, l_end))
 
@@ -250,6 +274,9 @@ def generate_ir(
                 visit(st, expr.body)
                 ins.append(ir.Jump(loc, l_start))
                 ins.append(l_end)
+
+                st.exit_loop()
+
                 return var_unit
 
             case ast.FunctionExpr():
@@ -277,6 +304,18 @@ def generate_ir(
 
                 st.add_local(expr.name, var_a)
 
+                return var_unit
+
+            case ast.BreakExpr():
+                if st.loop_end is None:
+                    raise Exception(f"{loc}: 'break' outside of loop")
+                ins.append(ir.Jump(loc, st.loop_end))
+                return var_unit
+
+            case ast.ContinueExpr():
+                if st.loop_start is None:
+                    raise Exception(f"{loc}: 'continue' outside of loop")
+                ins.append(ir.Jump(loc, st.loop_start))
                 return var_unit
 
             case _:
@@ -309,37 +348,4 @@ def generate_ir(
 reserved_names = {
     '+', '-', '*', '/', '%',
     '<', '<=', '>', '>=',
-    '==', '!=', '=',
-    'and', 'or',
-    'unary_-',
-    'unary_not',
-    'print_int',
-    'print_bool',
-    'read_int',
-    'true', 'false',
-    'Int', 'Bool', 'Unit'
-}
-
-from compiler.parser import parse
-from compiler.tokenizer import tokenize
-from compiler.type_checker import typecheck, setup_type_env
-if __name__ == "__main__":
-    # expr = parse(tokenize("""
-    #     var n: Int = read_int();
-    #     print_int(n);
-    #     while n > 1 do {
-    #         if n % 2 == 0 then {
-    #             n = n / 2;
-    #         } else {
-    #             n = 3 * n + 1;
-    #         }
-    #         print_int(n);
-    #     }
-    # """))
-    expr = parse(tokenize('var x = false; x or { print_int(123); true };'))
-    env = setup_type_env()
-    typecheck(expr, env)
-
-    ins = generate_ir(reserved_names, expr)
-    for i in ins:
-        print(i)
+    '==', '!='

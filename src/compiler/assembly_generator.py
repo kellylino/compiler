@@ -113,15 +113,6 @@ def generate_assembly(instructions: list[ir.Instruction]) -> str:
                 emit(f'jne .L{insn.then_label.name}')
                 emit(f'jmp .L{insn.else_label.name} \n')
             case ir.Call():
-                assert len(insn.args) <= 6
-                for i, arg in enumerate(insn.args):
-                    if i == 0: emit(f'movq {locals.get_ref(arg)}, %rdi')
-                    elif i == 1: emit(f'movq {locals.get_ref(arg)}, %rsi')
-                    elif i == 2: emit(f'movq {locals.get_ref(arg)}, %rdx')
-                    elif i == 3: emit(f'movq {locals.get_ref(arg)}, %rcx')
-                    elif i == 4: emit(f'movq {locals.get_ref(arg)}, %r8')
-                    elif i == 5: emit(f'movq {locals.get_ref(arg)}, %r9')
-
                 # ----- unary minus -----
                 if insn.fun.name == "unary_-":
                     emit(f'movq {locals.get_ref(insn.args[0])}, %rax')
@@ -134,6 +125,7 @@ def generate_assembly(instructions: list[ir.Instruction]) -> str:
 
                 # ----- print_int -----
                 elif insn.fun.name == "print_int":
+                    emit('subq $8, %rsp')
                     emit(f'movq {locals.get_ref(insn.args[0])}, %rdi')
                     emit('callq print_int')
 
@@ -157,31 +149,11 @@ def generate_assembly(instructions: list[ir.Instruction]) -> str:
                     left = locals.get_ref(insn.args[0])
                     right = locals.get_ref(insn.args[1])
 
-                    # Load left operand into %rax
-                    emit(f'movq {left}, %rax')
-
-                    # ---------- arithmetic ----------
-                    if insn.fun.name == "+":
-                        emit(f'addq {right}, %rax')
-
-                    elif insn.fun.name == "-":
-                        emit(f'subq {right}, %rax')
-
-                    elif insn.fun.name == "*":
-                        emit(f'imulq {right}, %rax')
-
-                    elif insn.fun.name == "/":
-                        emit('cqto')  # sign extend rax -> rdx:rax
-                        emit(f'idivq {right}')  # quotient in rax
-
-                    elif insn.fun.name == "%":
-                        emit('cqto')
-                        emit(f'idivq {right}')
-                        emit('movq %rdx, %rax')  # remainder
-
                     # ---------- comparisons ----------
-                    elif insn.fun.name in ["==", "!=", "<", "<=", ">", ">="]:
-                        emit(f'cmpq {right}, %rax')
+                    if insn.fun.name in ["==", "!=", "<", "<=", ">", ">="]:
+                        emit('xor %rax, %rax')
+                        emit(f'movq {left}, %rdx')
+                        emit(f'cmpq {right}, %rdx')
 
                         if insn.fun.name == "==":
                             emit('sete %al')
@@ -196,18 +168,46 @@ def generate_assembly(instructions: list[ir.Instruction]) -> str:
                         elif insn.fun.name == ">=":
                             emit('setge %al')
 
-                        emit('movzbq %al, %rax')
+                    # ---------- arithmetic ----------
+                    else:
+                        emit(f'movq {left}, %rax')
+                        if insn.fun.name == "+":
+                            emit(f'addq {right}, %rax')
 
-                    # ---------- logical ----------
-                    elif insn.fun.name == "and":
-                        emit(f'andq {right}, %rax')
+                        elif insn.fun.name == "-":
+                            emit(f'subq {right}, %rax')
 
-                    elif insn.fun.name == "or":
-                        emit(f'orq {right}, %rax')
+                        elif insn.fun.name == "*":
+                            emit(f'imulq {right}, %rax')
+
+                        elif insn.fun.name == "/":
+                            emit('cqto')  # sign extend rax -> rdx:rax
+                            emit(f'idivq {right}')  # quotient in rax
+
+                        elif insn.fun.name == "%":
+                            emit('cqto')
+                            emit(f'idivq {right}')
+                            emit('movq %rdx, %rax')  # remainder
+
+                        # ---------- logical ----------
+                        elif insn.fun.name == "and":
+                            emit(f'andq {right}, %rax')
+
+                        elif insn.fun.name == "or":
+                            emit(f'orq {right}, %rax')
 
 
                 # ---- function pointer call ----
                 else:
+                    assert len(insn.args) <= 6
+                    for i, arg in enumerate(insn.args):
+                        if i == 0: emit(f'movq {locals.get_ref(arg)}, %rdi')
+                        elif i == 1: emit(f'movq {locals.get_ref(arg)}, %rsi')
+                        elif i == 2: emit(f'movq {locals.get_ref(arg)}, %rdx')
+                        elif i == 3: emit(f'movq {locals.get_ref(arg)}, %rcx')
+                        elif i == 4: emit(f'movq {locals.get_ref(arg)}, %r8')
+                        elif i == 5: emit(f'movq {locals.get_ref(arg)}, %r9')
+
                     emit(f'movq {locals.get_ref(insn.fun)}, %rax')
                     emit('call *%rax')
 
@@ -231,15 +231,6 @@ from compiler.parser import parse
 
 if __name__ == '__main__':
 
-    expr = parse(tokenize("""var x = print_int;
-                x(4)
-                """))
-
-    env = setup_type_env()
-    typecheck(expr, env)
-
-    ins = generate_ir(reserved_names, expr)
-
-    line = generate_assembly(ins)
-
-    print(line)
+    expr = parse(tokenize("""var x = 7;
+while x <= 100 do {
+    if x %

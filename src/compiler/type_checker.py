@@ -144,7 +144,7 @@ def typecheck_helper(node: ast.Expression, env: SymTab) -> Type:
             if cond_type != Bool:
                 raise TypeError("Condition of while must be of type Bool")
 
-            typecheck(node.body, env)
+            return_type = typecheck(node.body, env)
 
             return Unit
 
@@ -158,6 +158,12 @@ def typecheck_helper(node: ast.Expression, env: SymTab) -> Type:
             if not isinstance(func_type, FunType):
                 raise TypeError(f"'{node.function_name.name}' is not a function")
 
+            if len(node.arguments) != len(func_type.params):
+                raise TypeError(
+                    f"Function '{node.function_name.name}' expects {len(func_type.params)} "
+                    f"parameter(s), but {len(node.arguments)} given"
+                )
+
             for arg, expected_type in zip(node.arguments, func_type.params):
                 arg_type = typecheck(arg, env)
                 if arg_type != expected_type:
@@ -170,8 +176,10 @@ def typecheck_helper(node: ast.Expression, env: SymTab) -> Type:
         case ast.BlockExpr():
             block_env = SymTab(parent=env)
             last_type: Type = Unit
+
             for stmt in node.statements:
                 last_type = typecheck(stmt, block_env)
+
             return last_type
 
         case ast.FunctionTypeExpr():
@@ -209,10 +217,88 @@ def typecheck_helper(node: ast.Expression, env: SymTab) -> Type:
         case ast.ContinueExpr():
             return Unit
 
+        case ast.ReturnExpr():
+            has_return = True
+            if node.result is not None:
+                return_type = typecheck(node.result, env)
+                return return_type
+            else:
+                return Unit
+
+        case ast.FunDefArgExpr():
+            if not isinstance(node.name, ast.Identifier):
+                raise TypeError(f"Parameter name must be an identifier, got {type(node.name)}")
+
+            param_type = typecheck(node.fun_type, env)
+
+            return param_type
+
+        case ast.FunDefExpr():
+            if not isinstance(node.name, ast.Identifier):
+                raise TypeError(f"Function name must be an identifier, got {type(node.name)}")
+
+            func_name = node.name.name
+
+            result_type = typecheck(node.result_type, env)
+
+            types: list[Type] = []
+            param_env = SymTab(parent=env)
+
+            for param in node.params:
+                if not isinstance(param, ast.FunDefArgExpr):
+                    raise TypeError(f"Function parameter must be FunDefArgExpr, got {type(param)}")
+
+                if not isinstance(param.name, ast.Identifier):
+                    raise TypeError(f"Parameter name must be an identifier, got {type(param.name)}")
+                param_name = param.name.name
+
+                param_type = typecheck(param.fun_type, env)
+                types.append(param_type)
+
+                param_env.define(param_name, param_type)
+
+            func_type = FunType(tuple(types), result_type)
+
+            env.define(func_name, func_type)
+
+            if isinstance(node.body, ast.BlockExpr) and node.body.statements:
+                first_stmt = node.body.statements[0]
+                if isinstance(first_stmt, ast.ReturnExpr):
+                    body_type = typecheck(first_stmt, param_env)
+                else:
+                    body_type = typecheck(node.body, param_env)
+            else:
+                body_type = typecheck(node.body, param_env)
+
+            if result_type != Unit and body_type != result_type:
+                raise TypeError(
+                    f"Function '{func_name}' body returns {body_type}, "
+                    f"but declared to return {result_type}"
+                )
+
+            return result_type
+
+        case ast.ModuleExpr():
+            module_env = SymTab(parent=env)
+            final_type: Type = Unit
+
+            for item in node.items:
+                if isinstance(item, ast.FunDefExpr):
+                    if not isinstance(item.name, ast.Identifier):
+                        raise TypeError(f"Function name must be an identifier, got {type(item.name)}")
+                    func_name = item.name.name
+
+                    module_env.define(func_name, Unit)
+
+            for item in node.items:
+                final_type = typecheck(item, module_env)
+
+            return final_type
+
         case _:
             raise TypeError(f"Unknown AST node: {node}")
 
 def typecheck(node: ast.Expression, env: SymTab) -> Type:
     t = typecheck_helper(node, env)
     node.type = t
-    retur
+    return t

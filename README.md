@@ -61,3 +61,10 @@ Recommended VSCode extensions:
 - Python
 - Pylance
 - autopep8
+
+
+docker build -f Dockerfile.dev -t compilers-dev:latest . && \
+  docker run -it --rm -v "$(pwd):/project" compilers-dev:latest
+
+./compiler.sh compile --output=test_program test.src
+./test_program

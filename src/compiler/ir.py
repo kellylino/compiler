@@ -73,3 +73,14 @@ class CondJump(Instruction):
     then_label: Label
     else_label: Label
 
+@dataclass(frozen=True)
+class Return(Instruction):
+    value: IRVar
+
+@dataclass(frozen=True)
+class FunLabel(Instruction):
+    """Special instruction for function signatures."""
+    funlabel: str
+
+    def __str__(self) -> str:
+        return self.funlabel

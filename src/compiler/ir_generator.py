@@ -59,9 +59,10 @@ def generate_ir(
     # the global symbol table of your interpreter or type checker.
     reserved_names: set[str],
     root_expr: ast.Expression
-) -> list[ir.Instruction]:
+) -> dict[str, list[ir.Instruction]]:
     # 'var_unit' is used when an expression's type is 'Unit'.
     var_unit = ir.IRVar('unit')
+    var_unit_return = ir.IRVar('None')
 
     var_counter = 1
     def new_var() -> ir.IRVar:
@@ -88,19 +89,18 @@ def generate_ir(
         lable.append(label_name)
         return ir.Label(loc,label_name)
 
-    # We collect the IR instructions that we generate into this list.
-    ins: list[ir.Instruction] = []
+    ins: dict[str, list[ir.Instruction]] = {}
 
-    # This function visits an AST node,
-    # appends IR instructions to 'ins',
-    # and returns the IR variable where
-    # the emitted IR instructions put the result.
-    #
-    # It uses a symbol table to map local variables
-    # (which may be shadowed) to unique IR variables.
-    # The symbol table will be updated in the same way as
-    # in the interpreter and type checker.
+    current_function = "main"
+    in_function_def = False
+
+    def emit(insn: ir.Instruction) -> None:
+        if current_function not in ins:
+            ins[current_function] = []
+        ins[current_function].append(insn)
+
     def visit(st: SymTab[ir.IRVar], expr: ast.Expression) -> ir.IRVar:
+        nonlocal current_function, var_counter
         loc = expr.loc
 
         match expr:
@@ -111,11 +111,11 @@ def generate_ir(
                 match expr.value:
                     case bool():
                         var = new_var()
-                        ins.append(ir.LoadBoolConst(
+                        emit(ir.LoadBoolConst(
                             loc, expr.value, var))
                     case int():
                         var = new_var()
-                        ins.append(ir.LoadIntConst(
+                        emit(ir.LoadIntConst(
                             loc, expr.value, var))
                     case None:
                         var = var_unit
@@ -128,11 +128,11 @@ def generate_ir(
                 # Look up the IR variable that corresponds to the source code variable.
                 if expr.name == "true":
                     var = new_var()
-                    ins.append(ir.LoadBoolConst(expr.loc, True, var))
+                    emit(ir.LoadBoolConst(expr.loc, True, var))
                     return var
                 elif expr.name == "false":
                     var = new_var()
-                    ins.append(ir.LoadBoolConst(expr.loc, False, var))
+                    emit(ir.LoadBoolConst(expr.loc, False, var))
                     return var
                 return st.require(expr.name)
 
@@ -140,14 +140,14 @@ def generate_ir(
                 var_op = st.require(f'unary_{expr.op}')
                 var_operand = visit(st, expr.operand)
                 var_result = new_var()
-                ins.append(ir.Call(
+                emit(ir.Call(
                     loc, var_op, [var_operand], var_result))
                 return var_result
 
             case ast.BinaryOp() if expr.op == "=":
                 var_left = visit(st, expr.left)
                 var_right = visit(st, expr.right)
-                ins.append(ir.Copy(loc, var_right, var_left))
+                emit(ir.Copy(loc, var_right, var_left))
                 return var_left
 
             case ast.BinaryOp() if expr.op == "or":
@@ -156,19 +156,19 @@ def generate_ir(
                 l_skip= new_label(expr.right.loc,'or_skip')
 
                 var_left = visit(st, expr.left)
-                ins.append(ir.CondJump(loc, var_left, l_skip, l_right))
+                emit(ir.CondJump(loc, var_left, l_skip, l_right))
 
-                ins.append(l_right)
+                emit(l_right)
                 var_right = visit(st, expr.right)
                 var_result = new_var()
-                ins.append(ir.Copy(loc, var_right, var_result))
-                ins.append(ir.Jump(loc, l_end))
+                emit(ir.Copy(loc, var_right, var_result))
+                emit(ir.Jump(loc, l_end))
 
-                ins.append(l_skip)
-                ins.append(ir.LoadBoolConst(loc, True, var_result))
-                ins.append(ir.Jump(loc, l_end))
+                emit(l_skip)
+                emit(ir.LoadBoolConst(loc, True, var_result))
+                emit(ir.Jump(loc, l_end))
 
-                ins.append(l_end)
+                emit(l_end)
 
                 return var_result
 
@@ -179,17 +179,17 @@ def generate_ir(
                 l_skip = new_label(expr.right.loc, 'and_skip')
 
                 var_left = visit(st, expr.left)
-                ins.append(ir.CondJump(loc, var_left, l_right, l_skip))
+                emit(ir.CondJump(loc, var_left, l_right, l_skip))
 
-                ins.append(l_right)
+                emit(l_right)
                 var_right = visit(st, expr.right)
                 var_result = new_var()
-                ins.append(ir.Copy(loc, var_right, var_result))
-                ins.append(ir.Jump(loc, l_end))
+                emit(ir.Copy(loc, var_right, var_result))
+                emit(ir.Jump(loc, l_end))
 
-                ins.append(l_skip)
-                ins.append(ir.LoadBoolConst(loc, False, var_result))
-                ins.append(l_end)
+                emit(l_skip)
+                emit(ir.LoadBoolConst(loc, False, var_result))
+                emit(l_end)
 
                 return var_result
 
@@ -202,37 +202,27 @@ def generate_ir(
                 # Generate variable to hold the result.
                 var_result = new_var()
                 # Emit a Call instruction that writes to that variable.
-                ins.append(ir.Call(
+                emit(ir.Call(
                     loc, var_op, [var_left, var_right], var_result))
                 return var_result
 
             case ast.IfThenElse():
                 if expr.else_branch is None:
-                    # Create (but don't emit) some jump targets.
                     l_then = new_label(expr.then_branch.loc, 'then')
                     l_end = new_label(expr.loc, 'if_end')
 
-                    # Recursively emit instructions for
-                    # evaluating the condition.
                     var_cond = visit(st, expr.condition)
-                    # Emit a conditional jump instruction
-                    # to jump to 'l_then' or 'l_end',
-                    # depending on the content of 'var_cond'.
-                    ins.append(ir.CondJump(loc, var_cond, l_then, l_end))
+                    emit(ir.CondJump(loc, var_cond, l_then, l_end))
 
-                    # Emit the label that marks the beginning of
-                    # the "then" branch.
-                    ins.append(l_then)
-                    # Recursively emit instructions for the "then" branch.
+                    emit(l_then)
                     visit(st, expr.then_branch)
 
-                    # Emit the label that we jump to
-                    # when we don't want to go to the "then" branch.
-                    ins.append(l_end)
+                    var_result = new_var()
+                    emit(ir.Copy(loc, var_unit, var_result))
 
-                    # An if-then expression doesn't return anything, so we
-                    # return a special variable "unit".
-                    return var_unit
+                    emit(l_end)
+
+                    return var_result
                 else:
                     # Similar to the above, but we also need to handle the "else" branch,
                     # and we need to generate a variable to hold the result of the whole expression.
@@ -241,26 +231,26 @@ def generate_ir(
                     l_end = new_label(expr.loc, 'if_end')
 
                     var_cond = visit(st, expr.condition)
-                    ins.append(ir.CondJump(loc, var_cond, l_then, l_else))
+                    emit(ir.CondJump(loc, var_cond, l_then, l_else))
 
                     var_result = new_var()
 
-                    ins.append(l_then)
+                    emit(l_then)
                     var_then = visit(st, expr.then_branch)
-                    ins.append(ir.Copy(loc, var_then, var_result))
-                    ins.append(ir.Jump(loc, l_end))
+                    emit(ir.Copy(loc, var_then, var_result))
+                    emit(ir.Jump(loc, l_end))
 
-                    ins.append(l_else)
+                    emit(l_else)
                     var_else = visit(st, expr.else_branch)
-                    ins.append(ir.Copy(loc, var_else, var_result))
+                    emit(ir.Copy(loc, var_else, var_result))
 
-                    ins.append(l_end)
+                    emit(l_end)
 
                     return var_result
 
             case ast.WhileExpr():
                 l_start = new_label(expr.loc, 'while_start')
-                ins.append(l_start)
+                emit(l_start)
                 l_body = new_label(expr.body.loc, 'while_body')
                 l_end = new_label(expr.loc, 'while_end')
 
@@ -268,12 +258,12 @@ def generate_ir(
                 st.enter_loop(l_start, l_end)
 
                 var_cond = visit(st, expr.condition)
-                ins.append(ir.CondJump(loc, var_cond, l_body, l_end))
+                emit(ir.CondJump(loc, var_cond, l_body, l_end))
 
-                ins.append(l_body)
+                emit(l_body)
                 visit(st, expr.body)
-                ins.append(ir.Jump(loc, l_start))
-                ins.append(l_end)
+                emit(ir.Jump(loc, l_start))
+                emit(l_end)
 
                 st.exit_loop()
 
@@ -283,7 +273,7 @@ def generate_ir(
                 var_fun = visit(st, expr.function_name)
                 var_args = [visit(st, arg) for arg in expr.arguments]
                 var_result = new_var()
-                ins.append(ir.Call(loc, var_fun, var_args, var_result))
+                emit(ir.Call(loc, var_fun, var_args, var_result))
                 return var_result
 
             case ast.BlockExpr():
@@ -300,7 +290,7 @@ def generate_ir(
                 initializer_var = visit(st, expr.initializer)
 
                 var_a = new_var()
-                ins.append(ir.Copy(loc, initializer_var, var_a))
+                emit(ir.Copy(loc, initializer_var, var_a))
 
                 st.add_local(expr.name, var_a)
 
@@ -309,14 +299,122 @@ def generate_ir(
             case ast.BreakExpr():
                 if st.loop_end is None:
                     raise Exception(f"{loc}: 'break' outside of loop")
-                ins.append(ir.Jump(loc, st.loop_end))
+                emit(ir.Jump(loc, st.loop_end))
                 return var_unit
 
             case ast.ContinueExpr():
                 if st.loop_start is None:
                     raise Exception(f"{loc}: 'continue' outside of loop")
-                ins.append(ir.Jump(loc, st.loop_start))
+                emit(ir.Jump(loc, st.loop_start))
                 return var_unit
+
+            case ast.ReturnExpr():
+                if expr.result is not None:
+                    var_result = visit(st, expr.result)
+                    emit(ir.Return(expr.loc, var_result))
+                    return var_result
+                else:
+                    emit(ir.Return(expr.loc, var_unit_return))
+                    return var_unit_return
+
+            case ast.FunDefArgExpr():
+                if isinstance(expr.name, ast.Identifier):
+                    return st.require(expr.name.name)
+                else:
+                    return st.require(str(expr.name))
+
+            case ast.FunDefExpr():
+                if isinstance(expr.name, ast.Identifier):
+                    func_name = expr.name.name
+
+                old_function = current_function
+                current_function = func_name
+                in_function_def = True
+
+                ins[func_name] = []
+
+                param_names = []
+                for param in expr.params:
+                    if isinstance(param, ast.FunDefArgExpr):
+                        if isinstance(param.name, ast.Identifier):
+                            param_name = param.name.name
+                            if param_name == 'x':
+                                var_counter += 1
+                            if param_name in param_names:
+                                raise Exception("Function f has duplicate parameter names")
+                            param_names.append(param.name.name)
+
+                sig_label = ir.FunLabel(expr.loc, f"{func_name}({', '.join(param_names)})")
+                emit(sig_label)
+
+                param_vars = []
+                param_names_list = []
+
+                old_counter = var_counter
+
+                for i, param in enumerate(expr.params):
+                    if isinstance(param, ast.FunDefArgExpr):
+                        if isinstance(param.name, ast.Identifier):
+                            param_name = param.name.name
+
+                        param_names_list.append(param_name)
+                        param_var = ir.IRVar(param_name)
+                        param_vars.append(param_var)
+
+                func_st = SymTab(parent=st)
+
+                for param_name, param_var in zip(param_names_list, param_vars):
+                    func_st.add_local(param_name, param_var)
+
+                visit(func_st, expr.body)
+
+                has_return = any(isinstance(i, ir.Return) for i in ins[current_function])
+
+                if not has_return:
+                    emit(ir.Return(expr.loc, var_unit_return))
+
+                for instruction in ins[current_function]:
+                    if isinstance(instruction, ir.Return):
+                        has_return = True
+                        break
+
+                func_var = ir.IRVar(func_name)
+                st.add_local(func_name, func_var)
+
+                var_counter = old_counter
+                current_function = old_function
+
+                return var_unit
+
+            case ast.ModuleExpr():
+                module_st = SymTab(parent=st)
+
+                for item in expr.items:
+                    if isinstance(item, ast.FunDefExpr):
+                        if isinstance(item.name, ast.Identifier):
+                            func_name = item.name.name
+                        module_st.add_local(func_name, ir.IRVar(func_name))
+
+                for item in expr.items:
+                    if isinstance(item, ast.FunDefExpr):
+                        visit(module_st, item)
+
+                old_function = current_function
+                current_function = "main"
+                in_function_def = True
+                ins["main"] = []
+
+                main_label = ir.FunLabel(expr.loc, "main()")
+                emit(main_label)
+
+                last_var = var_unit
+                for item in expr.items:
+                    if isinstance(item, ast.FunctionExpr):
+                        last_var = visit(module_st, item)
+
+                current_function = old_function
+
+                return last_var
 
             case _:
                 raise Exception(f"{loc}: Unsupported expression {type(expr)}")
@@ -332,20 +430,53 @@ def generate_ir(
     for name in reserved_names:
         root_symtab.add_local(name, ir.IRVar(name))
 
+    # visit(root_symtab, root_expr)
+
     # Start visiting the AST from the root.
     var_final_result = visit(root_symtab, root_expr)
 
     # Add IR code to print the result, based on the type assigned earlier by the type checker.
     if root_expr.type == Int:
-        ins.append(ir.Call(
+        emit(ir.Call(
             root_expr.loc, ir.IRVar('print_int'), [var_final_result], new_var()))
     elif root_expr.type == Bool:
-        ins.append(ir.Call(
+        emit(ir.Call(
             root_expr.loc, ir.IRVar('print_bool'), [var_final_result], new_var()))
+
+
+    if in_function_def:
+        emit(ir.Return(root_expr.loc, var_unit_return))
 
     return ins
 
 reserved_names = {
     '+', '-', '*', '/', '%',
     '<', '<=', '>', '>=',
-    '==', '!='
+    '==', '!=', '=',
+    'and', 'or',
+    'unary_-',
+    'unary_not',
+    'print_int',
+    'print_bool',
+    'read_int',
+    'true', 'false',
+    'Int', 'Bool', 'Unit'
+}
+
+from compiler.parser import parse
+from compiler.tokenizer import tokenize
+from compiler.type_checker import typecheck, setup_type_env
+if __name__ == "__main__":
+    with open('../test.src', 'r') as f:
+        source = f.read()
+
+    expr = parse(tokenize(source))
+
+    env = setup_type_env()
+    typecheck(expr, env)
+
+    ins = generate_ir(reserved_names, expr)
+
+    for fname, code in ins.items():
+        for insn in code:
+            print(insn)

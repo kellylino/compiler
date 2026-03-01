@@ -27,3 +27,4 @@ compiler_q5rjg9c7
 *.egg-info
 dist
 build
+.test-gadget

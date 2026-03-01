@@ -73,12 +73,12 @@ class ContinueExpr(Expression):
 
 @dataclass
 class ModuleExpr(Expression):
-    items: Expression
+    items: list[Expression]
 
 @dataclass
 class FunDefExpr(Expression):
     name: Expression
-    params: Expression
+    params: list[Expression]
     result_type: Expression
     body: Expression
 

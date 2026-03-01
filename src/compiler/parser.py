@@ -236,16 +236,43 @@ def parse(tokens: list[Token]) -> ast.Expression:
 
         result = parse_assignment()
 
+        if peek().text == ';':
+                consume(';')
+
         return ast.ReturnExpr(loc.loc, result)
+
+    def parse_fun_arg_expression() -> ast.Expression:
+        name = parse_identifier()
+        consume(':')
+        fun_type = parse_identifier()
+
+        return ast.FunDefArgExpr(name.loc, name, fun_type)
 
     def parse_fun_def_expression() -> ast.Expression:
         loc = consume('fun')
+        name = parse_identifier()
 
-        result = None
+        consume('(')
+        params = []
+        while peek().text != ")":
+            arg = parse_fun_arg_expression()
+            params.append(arg)
 
-        result = parse_assignment()
+            if peek().text == ",":
+                consume(',')
+
+        consume(')')
+        consume(':')
+
+        result_type = parse_identifier()
+        body = parse_assignment()
 
         return ast.FunDefExpr(loc.loc, name, params, result_type, body)
+
+    # def parse_module_expression() -> ast.Expression:
+
+
+    #     return ast.ModuleExpr(loc, items)
 
     def make_binary_parser(operators_levels: list[list[str]], level: int) -> Callable:
 
@@ -265,6 +292,8 @@ def parse(tokens: list[Token]) -> ast.Expression:
                     return parse_continue_expression()
                 elif peek().text == 'return':
                     return parse_return_expression()
+                elif peek().text == 'fun':
+                    return parse_fun_def_expression()
                 return parse_factor()
             return parse_base
 
@@ -293,6 +322,7 @@ def parse(tokens: list[Token]) -> ast.Expression:
             return ast.BinaryOp(token.loc, left, '=', right)
         return left
 
+    flag = peek().text
     statements = []
 
     while peek().type != 'end':
@@ -315,9 +345,48 @@ def parse(tokens: list[Token]) -> ast.Expression:
     if len(statements) == 1:
         return statements[0]
 
+    if flag == "fun":
+        return ast.ModuleExpr(
+            statements[0].loc,
+            statements
+        )
+
     return ast.BlockExpr(
         statements[0].loc,
         statements
     )
 
 
+from compiler.tokenizer import tokenize, Token
+import compiler.ast as ast
+def main() -> None:
+    # Example source code to parse
+    source_code = """
+    fun factorial(x: Int): Int {
+        var result = 0;
+        if x > 1 then {
+            result = x * factorial(x - 1);
+        } else {
+            result = 1;
+        }
+        return result;
+    }
+
+    factorial(5)
+    """
+
+    # Step 1: Tokenize the source code
+    tokens = tokenize(source_code)
+    print("Tokens:")
+    for t in tokens:
+        print(f"  {t.type}: '{t.text}' at {t.loc}")
+
+    # Step 2: Parse the tokens into an AST
+    ast_tree = parse(tokens)
+
+    # Step 3: Print the resulting AST
+    print("\nAST:")
+    print(ast_tree)
+
+if __name__ == "__main__":
+    main()

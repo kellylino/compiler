@@ -269,11 +269,6 @@ def parse(tokens: list[Token]) -> ast.Expression:
 
         return ast.FunDefExpr(loc.loc, name, params, result_type, body)
 
-    # def parse_module_expression() -> ast.Expression:
-
-
-    #     return ast.ModuleExpr(loc, items)
-
     def make_binary_parser(operators_levels: list[list[str]], level: int) -> Callable:
 
         if level >= len(operators_levels):
@@ -360,22 +355,9 @@ def parse(tokens: list[Token]) -> ast.Expression:
 from compiler.tokenizer import tokenize, Token
 import compiler.ast as ast
 def main() -> None:
-    # Example source code to parse
-    source_code = """
-    fun factorial(x: Int): Int {
-        var result = 0;
-        if x > 1 then {
-            result = x * factorial(x - 1);
-        } else {
-            result = 1;
-        }
-        return result;
-    }
+    with open('../test.src', 'r') as f:
+        source_code = f.read()
 
-    factorial(5)
-    """
-
-    # Step 1: Tokenize the source code
     tokens = tokenize(source_code)
     print("Tokens:")
     for t in tokens:

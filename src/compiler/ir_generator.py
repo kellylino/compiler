@@ -217,12 +217,12 @@ def generate_ir(
                     emit(l_then)
                     visit(st, expr.then_branch)
 
-                    var_result = new_var()
-                    emit(ir.Copy(loc, var_unit, var_result))
+                    # var_result = new_var()
+                    # emit(ir.Copy(loc, var_unit, var_result))
 
                     emit(l_end)
 
-                    return var_result
+                    return var_unit
                 else:
                     # Similar to the above, but we also need to handle the "else" branch,
                     # and we need to generate a variable to hold the result of the whole expression.
@@ -281,7 +281,7 @@ def generate_ir(
                 last_var = var_unit
                 for stmt in expr.statements:
                     last_var = visit(block_st, stmt)
-                return var_unit if expr.type == Unit else last_var
+                return last_var
 
             case ast.VarExpr():
                 if expr.name in st.table:
@@ -327,6 +327,7 @@ def generate_ir(
                 if isinstance(expr.name, ast.Identifier):
                     func_name = expr.name.name
 
+                var_counter = 1
                 old_function = current_function
                 current_function = func_name
                 in_function_def = True
@@ -402,15 +403,17 @@ def generate_ir(
                 old_function = current_function
                 current_function = "main"
                 in_function_def = True
+
                 ins["main"] = []
+
+                var_counter = 1
 
                 main_label = ir.FunLabel(expr.loc, "main()")
                 emit(main_label)
 
                 last_var = var_unit
                 for item in expr.items:
-                    if isinstance(item, ast.FunctionExpr):
-                        last_var = visit(module_st, item)
+                    last_var = visit(module_st, item)
 
                 current_function = old_function
 
